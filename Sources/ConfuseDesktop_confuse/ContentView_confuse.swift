@@ -18,76 +18,101 @@ struct ContentView_confuse: View {
         .preferredColorScheme(.dark)
     }
 
-    /// 返回左侧品牌和操作导航区域。
+    /// 返回左侧品牌、一级菜单和条件展开的二级菜单区域。
     private var sidebar_confuse: some View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 10) {
                 Image(systemName: "wand.and.stars")
                     .font(.system(size: 26, weight: .semibold))
                     .foregroundStyle(Color.confuseAccent_confuse)
-                Text("混淆机")
+                Text("App Tools")
                     .font(.system(size: 22, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
-                Text("Swift / Flutter 工程混淆工具")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.white.opacity(0.52))
             }
             .padding(.top, 34)
             .padding(.horizontal, 26)
 
-            Spacer().frame(height: 42)
-            Text("操作流程")
+            Spacer().frame(height: 38)
+            Text("功能菜单")
                 .font(.system(size: 10, weight: .bold))
                 .tracking(1.4)
                 .foregroundStyle(.white.opacity(0.35))
                 .padding(.horizontal, 26)
 
-            VStack(spacing: 8) {
-                ForEach(OperationMode_confuse.allCases) { mode_confuse in
+            VStack(spacing: 4) {
+                ForEach(PrimaryMenu_confuse.allCases) { menu_confuse in
                     Button {
-                        viewModel_confuse.operation_confuse = mode_confuse
+                        viewModel_confuse.primaryMenu_confuse = menu_confuse
                     } label: {
                         HStack(spacing: 12) {
-                            Image(systemName: icon_confuse(for: mode_confuse))
+                            Image(systemName: menu_confuse.iconName_confuse)
                                 .frame(width: 18)
-                            Text(mode_confuse.displayName_confuse)
+                            Text(menu_confuse.displayName_confuse)
                             Spacer()
+                            if hasSubmenu_confuse(menu_confuse) {
+                                Image(systemName: "chevron.down")
+                                    .font(.system(size: 9, weight: .bold))
+                                    .rotationEffect(.degrees(viewModel_confuse.primaryMenu_confuse == menu_confuse ? 0 : -90))
+                            }
                         }
                         .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(viewModel_confuse.operation_confuse == mode_confuse ? .white : .white.opacity(0.62))
+                        .foregroundStyle(viewModel_confuse.primaryMenu_confuse == menu_confuse ? .white : .white.opacity(0.62))
                         .padding(.vertical, 11)
                         .padding(.horizontal, 13)
-                        .background(viewModel_confuse.operation_confuse == mode_confuse ? Color.confuseAccent_confuse.opacity(0.18) : .clear)
+                        .background(viewModel_confuse.primaryMenu_confuse == menu_confuse ? Color.confuseAccent_confuse.opacity(0.18) : .clear)
                         .clipShape(RoundedRectangle(cornerRadius: 8))
                     }
                     .buttonStyle(.plain)
+
+                    if viewModel_confuse.primaryMenu_confuse == menu_confuse {
+                        submenu_confuse(for: menu_confuse)
+                    }
                 }
             }
             .padding(.top, 14)
-            .padding(.horizontal, 16)
+            .padding(.horizontal, 14)
 
             Spacer()
-            VStack(alignment: .leading, spacing: 7) {
-                Text("引擎信息")
-                    .font(.system(size: 10, weight: .bold))
-                    .tracking(1.4)
-                    .foregroundStyle(.white.opacity(0.35))
-                Text("Swift / Flutter 项目")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.6))
-                Text("支持映射 JSON")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.white.opacity(0.35))
-            }
-            .padding(.horizontal, 26)
-            .padding(.bottom, 28)
         }
         .frame(width: 218)
         .background(Color.black.opacity(0.16))
     }
 
-    /// 返回右侧主配置内容。
+    /// 根据当前一级菜单返回右侧内容区域。
+    @ViewBuilder
     private var mainContent_confuse: some View {
+        switch viewModel_confuse.primaryMenu_confuse {
+        case .obfuscation_confuse:
+            obfuscationContent_confuse
+        case .initialize_confuse:
+            placeholderContent_confuse(
+                title_confuse: "初始化项目",
+                subtitle_confuse: "项目初始化功能即将接入。",
+                iconName_confuse: "shippingbox"
+            )
+        case .submission_confuse:
+            placeholderContent_confuse(
+                title_confuse: viewModel_confuse.submissionMenu_confuse.displayName_confuse,
+                subtitle_confuse: "提交自动化菜单已创建，当前暂不执行功能。",
+                iconName_confuse: "arrow.up.doc"
+            )
+        case .monitoring_confuse:
+            placeholderContent_confuse(
+                title_confuse: viewModel_confuse.monitoringMenu_confuse.displayName_confuse,
+                subtitle_confuse: "监控审核菜单已创建，当前暂不执行功能。",
+                iconName_confuse: "checkmark.seal"
+            )
+        case .settings_confuse:
+            placeholderContent_confuse(
+                title_confuse: "设置",
+                subtitle_confuse: "应用设置功能即将接入。",
+                iconName_confuse: "gearshape"
+            )
+        }
+    }
+
+    /// 返回混淆程序的项目配置和执行内容。
+    private var obfuscationContent_confuse: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
                 header_confuse
@@ -98,6 +123,159 @@ struct ContentView_confuse: View {
             }
             .padding(.horizontal, 34)
             .padding(.vertical, 30)
+        }
+    }
+
+    /// 返回当前尚未接入业务功能的菜单占位页。
+    /// - Parameters:
+    ///   - title_confuse: 页面标题。
+    ///   - subtitle_confuse: 页面辅助说明。
+    ///   - iconName_confuse: 页面图标名称。
+    /// - Returns: 占位页面视图。
+    private func placeholderContent_confuse(
+        title_confuse: String,
+        subtitle_confuse: String,
+        iconName_confuse: String
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 24) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 7) {
+                    Text(title_confuse)
+                        .font(.system(size: 27, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+                    Text(subtitle_confuse)
+                        .font(.system(size: 13))
+                        .foregroundStyle(.white.opacity(0.52))
+                }
+                Spacer()
+                statusBadge_confuse
+            }
+
+            Spacer()
+
+            VStack(spacing: 14) {
+                Image(systemName: iconName_confuse)
+                    .font(.system(size: 34, weight: .medium))
+                    .foregroundStyle(Color.confuseAccent_confuse)
+                Text("功能准备中")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(.white)
+                Text("当前菜单仅用于导航展示，后续将在此处接入业务流程。")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.white.opacity(0.45))
+            }
+            .frame(maxWidth: .infinity)
+
+            Spacer()
+        }
+        .padding(.horizontal, 34)
+        .padding(.vertical, 30)
+    }
+
+    /// 判断一级菜单是否拥有二级菜单。
+    /// - Parameter menu_confuse: 待判断的一级菜单。
+    /// - Returns: 拥有二级菜单时返回 true。
+    private func hasSubmenu_confuse(_ menu_confuse: PrimaryMenu_confuse) -> Bool {
+        switch menu_confuse {
+        case .obfuscation_confuse, .submission_confuse, .monitoring_confuse:
+            return true
+        case .initialize_confuse, .settings_confuse:
+            return false
+        }
+    }
+
+    /// 返回当前一级菜单对应的二级菜单列表。
+    /// - Parameter menu_confuse: 当前一级菜单。
+    /// - Returns: 二级菜单导航视图。
+    @ViewBuilder
+    private func submenu_confuse(for menu_confuse: PrimaryMenu_confuse) -> some View {
+        switch menu_confuse {
+        case .obfuscation_confuse:
+            ForEach(OperationMode_confuse.allCases) { mode_confuse in
+                submenuButton_confuse(
+                    title_confuse: mode_confuse.displayName_confuse,
+                    iconName_confuse: icon_confuse(for: mode_confuse),
+                    isSelected_confuse: viewModel_confuse.operation_confuse == mode_confuse
+                ) {
+                    viewModel_confuse.operation_confuse = mode_confuse
+                }
+            }
+        case .submission_confuse:
+            ForEach(SubmissionAutomationMenu_confuse.allCases) { menuItem_confuse in
+                submenuButton_confuse(
+                    title_confuse: menuItem_confuse.displayName_confuse,
+                    iconName_confuse: submissionIcon_confuse(for: menuItem_confuse),
+                    isSelected_confuse: viewModel_confuse.submissionMenu_confuse == menuItem_confuse
+                ) {
+                    viewModel_confuse.submissionMenu_confuse = menuItem_confuse
+                }
+            }
+        case .monitoring_confuse:
+            ForEach(MonitoringAuditMenu_confuse.allCases) { menuItem_confuse in
+                submenuButton_confuse(
+                    title_confuse: menuItem_confuse.displayName_confuse,
+                    iconName_confuse: monitoringIcon_confuse(for: menuItem_confuse),
+                    isSelected_confuse: viewModel_confuse.monitoringMenu_confuse == menuItem_confuse
+                ) {
+                    viewModel_confuse.monitoringMenu_confuse = menuItem_confuse
+                }
+            }
+        case .initialize_confuse, .settings_confuse:
+            EmptyView()
+        }
+    }
+
+    /// 返回统一样式的二级菜单按钮。
+    /// - Parameters:
+    ///   - title_confuse: 二级菜单标题。
+    ///   - iconName_confuse: 二级菜单图标名称。
+    ///   - isSelected_confuse: 是否为当前选中项。
+    ///   - action_confuse: 点击后的状态更新动作。
+    /// - Returns: 二级菜单按钮视图。
+    private func submenuButton_confuse(
+        title_confuse: String,
+        iconName_confuse: String,
+        isSelected_confuse: Bool,
+        action_confuse: @escaping () -> Void
+    ) -> some View {
+        Button(action: action_confuse) {
+            HStack(spacing: 10) {
+                Image(systemName: iconName_confuse)
+                    .font(.system(size: 11, weight: .medium))
+                    .frame(width: 17)
+                Text(title_confuse)
+                Spacer()
+            }
+            .font(.system(size: 12, weight: .medium))
+            .foregroundStyle(isSelected_confuse ? Color.confuseAccent_confuse : .white.opacity(0.48))
+            .padding(.vertical, 8)
+            .padding(.leading, 35)
+            .padding(.trailing, 12)
+            .background(isSelected_confuse ? Color.confuseAccent_confuse.opacity(0.10) : .clear)
+            .clipShape(RoundedRectangle(cornerRadius: 7))
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// 返回提交自动化二级菜单的图标名称。
+    /// - Parameter menu_confuse: 提交自动化二级菜单。
+    /// - Returns: SF Symbols 图标名称。
+    private func submissionIcon_confuse(for menu_confuse: SubmissionAutomationMenu_confuse) -> String {
+        switch menu_confuse {
+        case .codeMagic_confuse: return "paperplane"
+        case .agreement_confuse: return "doc.text"
+        case .materials_confuse: return "folder"
+        case .backend_confuse: return "rectangle.and.pencil.and.ellipsis"
+        }
+    }
+
+    /// 返回监控审核二级菜单的图标名称。
+    /// - Parameter menu_confuse: 监控审核二级菜单。
+    /// - Returns: SF Symbols 图标名称。
+    private func monitoringIcon_confuse(for menu_confuse: MonitoringAuditMenu_confuse) -> String {
+        switch menu_confuse {
+        case .status_confuse: return "waveform.path.ecg"
+        case .records_confuse: return "clock.arrow.circlepath"
         }
     }
 

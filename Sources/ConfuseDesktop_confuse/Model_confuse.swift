@@ -29,9 +29,81 @@ enum OperationMode_confuse: String, CaseIterable, Identifiable {
     /// 返回界面展示的中文名称。
     var displayName_confuse: String {
         switch self {
-        case .obfuscate_confuse: return "混淆"
-        case .deobfuscate_confuse: return "反混淆"
-        case .merge_confuse: return "合包混淆"
+        case .obfuscate_confuse: return "混淆项目"
+        case .deobfuscate_confuse: return "混淆回归"
+        case .merge_confuse: return "增量混淆"
+        }
+    }
+}
+
+/// 描述应用左侧的五个一级功能菜单。
+enum PrimaryMenu_confuse: String, CaseIterable, Identifiable {
+    case initialize_confuse = "initialize"
+    case obfuscation_confuse = "obfuscation"
+    case submission_confuse = "submission"
+    case monitoring_confuse = "monitoring"
+    case settings_confuse = "settings"
+
+    /// 返回用于 SwiftUI 列表稳定标识的菜单值。
+    var id: String { rawValue }
+
+    /// 返回一级菜单的中文名称。
+    var displayName_confuse: String {
+        switch self {
+        case .initialize_confuse: return "初始化项目"
+        case .obfuscation_confuse: return "混淆程序"
+        case .submission_confuse: return "提交自动化"
+        case .monitoring_confuse: return "监控审核"
+        case .settings_confuse: return "设置"
+        }
+    }
+
+    /// 返回一级菜单对应的 SF Symbols 图标名称。
+    var iconName_confuse: String {
+        switch self {
+        case .initialize_confuse: return "shippingbox"
+        case .obfuscation_confuse: return "wand.and.stars"
+        case .submission_confuse: return "arrow.up.doc"
+        case .monitoring_confuse: return "checkmark.seal"
+        case .settings_confuse: return "gearshape"
+        }
+    }
+}
+
+/// 描述提交自动化下的二级菜单，目前仅用于导航展示。
+enum SubmissionAutomationMenu_confuse: String, CaseIterable, Identifiable {
+    case codeMagic_confuse = "code_magic"
+    case agreement_confuse = "agreement"
+    case materials_confuse = "materials"
+    case backend_confuse = "backend"
+
+    /// 返回用于 SwiftUI 列表稳定标识的菜单值。
+    var id: String { rawValue }
+
+    /// 返回提交自动化二级菜单的中文名称。
+    var displayName_confuse: String {
+        switch self {
+        case .codeMagic_confuse: return "提交 CodeMagic"
+        case .agreement_confuse: return "协议处理"
+        case .materials_confuse: return "整理资料"
+        case .backend_confuse: return "填写后台"
+        }
+    }
+}
+
+/// 描述监控审核下的二级菜单，目前仅用于导航展示。
+enum MonitoringAuditMenu_confuse: String, CaseIterable, Identifiable {
+    case status_confuse = "status"
+    case records_confuse = "records"
+
+    /// 返回用于 SwiftUI 列表稳定标识的菜单值。
+    var id: String { rawValue }
+
+    /// 返回监控审核二级菜单的中文名称。
+    var displayName_confuse: String {
+        switch self {
+        case .status_confuse: return "审核状态"
+        case .records_confuse: return "审核记录"
         }
     }
 }

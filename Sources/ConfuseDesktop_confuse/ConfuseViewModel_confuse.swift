@@ -5,6 +5,9 @@ import SwiftUI
 /// 管理工程选择、配置检测、任务执行状态和界面提示。
 @MainActor
 final class ConfuseViewModel_confuse: ObservableObject {
+    @Published var primaryMenu_confuse: PrimaryMenu_confuse = .obfuscation_confuse
+    @Published var submissionMenu_confuse: SubmissionAutomationMenu_confuse = .codeMagic_confuse
+    @Published var monitoringMenu_confuse: MonitoringAuditMenu_confuse = .status_confuse
     @Published var projectType_confuse: ProjectType_confuse = .swift_confuse
     @Published var operation_confuse: OperationMode_confuse = .obfuscate_confuse
     @Published var namingRule_confuse: NamingRule_confuse = .classic_confuse
