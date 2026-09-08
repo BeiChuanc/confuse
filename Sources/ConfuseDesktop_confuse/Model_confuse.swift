@@ -1,7 +1,7 @@
 import Foundation
 
 /// 描述当前支持的工程类别，并为界面提供稳定的展示值。
-enum ProjectType_confuse: String, CaseIterable, Identifiable {
+enum ProjectType_confuse: String, CaseIterable, Identifiable, Sendable {
     case swift_confuse = "swift"
     case flutter_confuse = "flutter"
 
@@ -15,6 +15,54 @@ enum ProjectType_confuse: String, CaseIterable, Identifiable {
         case .flutter_confuse: return "Flutter"
         }
     }
+}
+
+/// 描述 Swift 项目初始化流程中的固定步骤，用于进度展示和状态更新。
+enum ProjectInitializationStep_confuse: Int, CaseIterable, Identifiable, Sendable {
+    case createStructure_confuse
+    case configureProject_confuse
+    case cleanFiles_confuse
+    case writeInformation_confuse
+    case copyModules_confuse
+    case createAssets_confuse
+    case runRenameScript_confuse
+
+    /// 返回步骤的稳定标识。
+    var id: Int { rawValue }
+
+    /// 返回步骤的中文展示名称。
+    var displayName_confuse: String {
+        switch self {
+        case .createStructure_confuse: return "创建项目结构"
+        case .configureProject_confuse: return "配置工程参数"
+        case .cleanFiles_confuse: return "清理默认文件"
+        case .writeInformation_confuse: return "写入应用信息"
+        case .copyModules_confuse: return "复制基础模块"
+        case .createAssets_confuse: return "创建资源目录"
+        case .runRenameScript_confuse: return "执行重命名脚本"
+        }
+    }
+}
+
+/// 描述初始化步骤的运行状态。
+enum ProjectInitializationStepState_confuse: Equatable, Sendable {
+    case pending_confuse
+    case running_confuse
+    case completed_confuse
+}
+
+/// 保存一次项目初始化所需的名称、类型和目标目录。
+struct ProjectInitializationRequest_confuse: Sendable {
+    let projectName_confuse: String
+    let projectType_confuse: ProjectType_confuse
+    let destinationDirectoryPath_confuse: String
+}
+
+/// 描述初始化服务发出的单步进度更新。
+struct ProjectInitializationProgress_confuse: Sendable {
+    let step_confuse: ProjectInitializationStep_confuse
+    let state_confuse: ProjectInitializationStepState_confuse
+    let detail_confuse: String
 }
 
 /// 描述本次混淆任务的操作类型。

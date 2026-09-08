@@ -4,6 +4,7 @@ import UniformTypeIdentifiers
 /// 构建混淆机主窗口，负责展示配置、拖拽区域、执行控制和结果摘要。
 struct ContentView_confuse: View {
     @StateObject private var viewModel_confuse = ConfuseViewModel_confuse()
+    @StateObject private var initializationViewModel_confuse = ProjectInitializationViewModel_confuse()
     @StateObject private var monitoringViewModel_confuse = MonitoringViewModel_confuse()
     @State private var isDropTargeted_confuse = false
 
@@ -111,11 +112,7 @@ struct ContentView_confuse: View {
         case .obfuscation_confuse:
             obfuscationContent_confuse
         case .initialize_confuse:
-            placeholderContent_confuse(
-                title_confuse: "初始化项目",
-                subtitle_confuse: "项目初始化功能即将接入。",
-                iconName_confuse: "shippingbox"
-            )
+            ProjectInitializationView_confuse(viewModel_confuse: initializationViewModel_confuse)
         case .submission_confuse:
             placeholderContent_confuse(
                 title_confuse: viewModel_confuse.submissionMenu_confuse.displayName_confuse,

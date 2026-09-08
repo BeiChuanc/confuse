@@ -1,0 +1,23 @@
+# Uncomment the next line to define a global platform for your project
+
+target 'base_one' do
+  # Comment the next line if you don't want to use dynamic frameworks
+  use_frameworks!
+
+  pod 'SnapKit', '~> 5.7.0'
+  pod 'Moya'
+  pod 'ProgressHUD'
+  pod 'IQKeyboardManager'
+  pod 'AppsFlyerFramework', '6.14.4'
+  pod 'Kingfisher', '7.6.2'
+  pod 'FSPagerView'
+  pod 'RMStore'
+
+end
+post_install do |installer|
+    installer.pods_project.targets.each do |target|
+        target.build_configurations.each do |config|
+            config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
+        end
+    end
+end
