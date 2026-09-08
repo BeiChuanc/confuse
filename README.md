@@ -12,7 +12,8 @@ Confuse 是面向 macOS 的 SwiftUI 桌面工具，用于处理 Swift 和 Flutte
 - 混淆 Swift `.xcassets` 资源集以及 `.mp4`、`.mov`、`.m4v` 媒体资源。
 - 根据映射 JSON 恢复文件名、资源名和代码引用。
 - 扫描已有混淆项目中的新增文件，并将新增映射合并到原 JSON。
-- 映射缺失时自动查找，仍未找到时显示提示弹窗并停止操作。
+- 所有项目的映射统一保存在应用同级的 `JSON` 文件夹。
+- 映射缺失时显示提示弹窗并停止操作。
 
 ## 环境要求
 
@@ -28,20 +29,6 @@ swift --version
 python3 --version
 ```
 
-## 从源码运行
-
-进入项目目录后执行：
-
-```bash
-./run_confuse.command
-```
-
-也可以直接执行：
-
-```bash
-swift run -c debug
-```
-
 ## 打包应用
 
 执行：
@@ -50,13 +37,17 @@ swift run -c debug
 ./build_confuse.command
 ```
 
-构建完成后会生成：
+构建完成后会同时生成应用和映射目录：
 
 ```text
-dist/Confuse.app
+dist/
+├── Confuse.app
+└── JSON/
 ```
 
-构建脚本会完成 Release 编译、资源复制、应用图标配置和本地临时签名。公开分发时仍需使用 Apple Developer ID 完成正式签名与公证。
+构建脚本会完成 Release 编译、资源复制、应用图标配置、本地临时签名和 `JSON` 文件夹创建。应用运行后始终从同级的 `JSON` 文件夹读取和写入映射。
+
+发布或移动程序时，需要让 `Confuse.app` 和 `JSON` 文件夹保持同级。公开分发时仍需使用 Apple Developer ID 完成正式签名与公证。
 
 ## 使用方法
 
@@ -64,7 +55,7 @@ dist/Confuse.app
 2. 点击“选择文件夹”，或把项目文件夹拖入项目区域。
 3. 检查自动识别的项目类型和项目后缀，必要时手动修改后缀。
 4. 选择命名规则。
-5. 反混淆或合包时可以手动选择映射 JSON；留空时应用会自动查找。
+5. 检查界面显示的映射 JSON 路径。
 6. 点击“执行操作”，等待执行状态显示完成。
 
 操作会直接修改所选项目。正式处理前应使用 Git 提交当前代码，或保留完整项目备份。
@@ -83,7 +74,7 @@ dist/Confuse.app
 
 ## 映射 JSON
 
-首次混淆时，应用会在项目根目录创建 `JSON` 文件夹。文件名格式为：
+执行打包命令时，会在 `Confuse.app` 同级创建 `JSON` 文件夹。首次混淆时，应用把映射写入该文件夹，不会在被处理的项目中创建 JSON。文件名格式为：
 
 ```text
 项目后缀_项目类型.json
@@ -96,13 +87,9 @@ JSON/wanderbell_swift.json
 JSON/wanderbell_flutter.json
 ```
 
-反混淆和合包混淆按以下顺序查找映射：
+混淆、反混淆和合包混淆都使用当前项目后缀及项目类型计算文件名。需要读取映射时，应用只在自身同级的 `JSON` 文件夹中精确查找。找不到时会弹出“未找到映射 JSON”提示并停止处理。
 
-1. 界面中手动选择的 JSON 文件。
-2. 项目 `JSON` 目录中与项目后缀及项目类型精确匹配的文件。
-3. 项目根目录中的旧版 `mapping_swift.json` 或 `mapping_flutter.json`。
-
-如果都不存在，应用会弹出“未找到映射 JSON”提示并停止处理。
+不同项目如果使用相同后缀和项目类型，会对应同一个映射文件。应为不同项目设置不同后缀，避免映射相互覆盖。
 
 ## 操作说明
 
@@ -112,7 +99,7 @@ JSON/wanderbell_flutter.json
 
 ### 反混淆
 
-读取映射 JSON，反向恢复文件名、代码符号、资源名和相关引用。缺少映射时不会修改项目。
+从应用同级的 `JSON` 文件夹读取映射，反向恢复文件名、代码符号、资源名和相关引用。缺少映射时不会修改项目。
 
 ### 合包混淆
 
@@ -130,9 +117,8 @@ Info_confuse.plist
 Sources/
 build_app_confuse.sh
 build_confuse.command
-run_confuse.command
-README_confuse.md
+README.md
 .gitignore
 ```
 
-`.build`、`.swiftpm`、`dist` 和 `.app` 均为本地生成内容，已经在 `.gitignore` 中排除。
+仓库中不再提供源码运行命令。`.build`、`.swiftpm`、`dist` 和 `.app` 均为本地生成内容，已经在 `.gitignore` 中排除。

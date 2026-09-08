@@ -2,6 +2,19 @@ import Foundation
 
 /// 负责把任务参数交给随应用打包的 Python 引擎，并解析结构化结果。
 final class EngineService_confuse {
+    /// 返回打包应用同级的集中映射目录。
+    /// - Returns: `Confuse.app` 同级的 `JSON` 文件夹；非应用环境下返回当前目录的 `JSON` 文件夹。
+    static func mappingDirectoryURL_confuse() -> URL {
+        let bundleURL_confuse = Bundle.main.bundleURL
+        if bundleURL_confuse.pathExtension.lowercased() == "app" {
+            return bundleURL_confuse
+                .deletingLastPathComponent()
+                .appendingPathComponent("JSON", isDirectory: true)
+        }
+        return URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+            .appendingPathComponent("JSON", isDirectory: true)
+    }
+
     /// 执行一次混淆、反混淆或合包任务。
     /// - Parameter request_confuse: 任务目录、类别、后缀和操作配置。
     /// - Returns: 引擎返回的执行统计结果。
@@ -11,7 +24,7 @@ final class EngineService_confuse {
             forResource: "confuse_engine",
             withExtension: "py"
         ) else {
-            throw NSError(domain: "ConfuseEngine", code: 1, userInfo: [NSLocalizedDescriptionKey: "Engine resource is missing."])
+            throw NSError(domain: "ConfuseEngine", code: 1, userInfo: [NSLocalizedDescriptionKey: "混淆引擎资源缺失。"])
         }
 
         let requestData_confuse = try JSONEncoder().encode(request_confuse)

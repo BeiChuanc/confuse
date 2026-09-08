@@ -3,13 +3,11 @@
 
 import argparse
 import json
-import os
 import random
 import re
 import string
 import sys
 from pathlib import Path
-from typing import Optional
 
 
 SWIFT_KEYWORDS_CONFUSE = {
@@ -79,34 +77,18 @@ def mapping_file_name_confuse(request_confuse: dict, project_type_confuse: str) 
     return f"{suffix_confuse}_{project_type_confuse}.json"
 
 
-def legacy_mapping_path_confuse(root_confuse: Path, project_type_confuse: str) -> Optional[Path]:
-    """查找旧版本根目录或 JSON 目录中的映射文件，用于兼容已有项目。"""
-    legacy_names_confuse = [f"mapping_{project_type_confuse}.json"]
-    candidates_confuse = [root_confuse / name_confuse for name_confuse in legacy_names_confuse]
-    for candidate_confuse in candidates_confuse:
-        if candidate_confuse.exists():
-            return candidate_confuse
-    return None
-
-
-def detect_mapping_path_confuse(request_confuse: dict, root_confuse: Path, project_type_confuse: str) -> Path:
-    """根据请求或工程类别定位映射 JSON 文件。"""
-    requested_confuse = request_confuse.get("mappingPath_confuse")
-    if requested_confuse:
-        requested_path_confuse = Path(requested_confuse).expanduser()
-        if requested_path_confuse.exists():
-            return requested_path_confuse
-        if request_confuse.get("operation_confuse") != "obfuscate":
-            raise ConfuseError_confuse("选择的映射 JSON 不存在。", "mapping_missing")
-    default_path_confuse = root_confuse / "JSON" / mapping_file_name_confuse(request_confuse, project_type_confuse)
+def detect_mapping_path_confuse(request_confuse: dict, project_type_confuse: str) -> Path:
+    """在应用同级 JSON 目录中定位当前项目后缀对应的映射文件。"""
+    mapping_directory_value_confuse = request_confuse.get("mappingDirectory_confuse")
+    if not mapping_directory_value_confuse:
+        raise ConfuseError_confuse("未配置应用映射 JSON 目录。", "mapping_directory_missing")
+    mapping_directory_confuse = Path(mapping_directory_value_confuse).expanduser().resolve()
+    default_path_confuse = mapping_directory_confuse / mapping_file_name_confuse(request_confuse, project_type_confuse)
     if default_path_confuse.exists():
         return default_path_confuse
     if request_confuse.get("operation_confuse") in {"deobfuscate", "merge"}:
-        legacy_path_confuse = legacy_mapping_path_confuse(root_confuse, project_type_confuse)
-        if legacy_path_confuse:
-            return legacy_path_confuse
         raise ConfuseError_confuse(
-            f"项目目录和 JSON 文件夹中均未找到 {default_path_confuse.name}。",
+            f"应用同级 JSON 文件夹中未找到 {default_path_confuse.name}。",
             "mapping_missing",
         )
     return default_path_confuse
@@ -377,7 +359,7 @@ def run_engine_confuse(request_confuse: dict) -> dict:
     naming_rule_confuse = request_confuse.get("namingRule_confuse", "classic")
     if naming_rule_confuse not in {"classic", "extended", "anonymous"}:
         raise ConfuseError_confuse("不支持的命名规则。", "naming_rule_invalid")
-    mapping_path_confuse = detect_mapping_path_confuse(request_confuse, root_confuse, project_type_confuse)
+    mapping_path_confuse = detect_mapping_path_confuse(request_confuse, project_type_confuse)
     mapping_confuse = load_mapping_confuse(mapping_path_confuse)
     project_name_confuse_value = project_name_confuse(root_confuse, project_type_confuse)
     suffixes_confuse_value = suffixes_confuse(request_confuse)

@@ -9,6 +9,7 @@ bin_path_confuse="$(swift build -c release --show-bin-path)"
 executable_path_confuse="${bin_path_confuse}/ConfuseDesktop_confuse"
 resource_bundle_path_confuse="$(find "$bin_path_confuse" -maxdepth 1 -type d -name '*.bundle' -print -quit)"
 application_path_confuse="$project_path_confuse/dist/Confuse.app"
+mapping_directory_confuse="$project_path_confuse/dist/JSON"
 
 if [[ ! -x "$executable_path_confuse" ]]; then
     echo "未生成 Release 可执行文件。"
@@ -21,6 +22,7 @@ fi
 
 rm -rf "$application_path_confuse"
 mkdir -p "$application_path_confuse/Contents/MacOS" "$application_path_confuse/Contents/Resources"
+mkdir -p "$mapping_directory_confuse"
 cp "$executable_path_confuse" "$application_path_confuse/Contents/MacOS/ConfuseDesktop_confuse"
 cp -R "$resource_bundle_path_confuse" "$application_path_confuse/Contents/Resources/"
 cp "$project_path_confuse/Sources/ConfuseDesktop_confuse/Resources/Confuse_confuse.icns" "$application_path_confuse/Contents/Resources/Confuse_confuse.icns"
@@ -32,3 +34,4 @@ cp "$project_path_confuse/Info_confuse.plist" "$application_path_confuse/Content
 codesign --force --deep --sign - "$application_path_confuse"
 
 echo "已生成应用：$application_path_confuse"
+echo "已准备映射目录：$mapping_directory_confuse"

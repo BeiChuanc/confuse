@@ -11,7 +11,6 @@ final class ConfuseViewModel_confuse: ObservableObject {
     @Published var projectPath_confuse = ""
     @Published var suffix_confuse = ""
     @Published var detectedSuffixes_confuse: [String] = []
-    @Published var mappingPath_confuse = ""
     @Published var status_confuse = "就绪"
     @Published var detail_confuse = "请选择项目文件夹，或将项目拖入下方区域。"
     @Published var isRunning_confuse = false
@@ -44,19 +43,6 @@ final class ConfuseViewModel_confuse: ObservableObject {
         detectConfiguration_confuse()
     }
 
-    /// 打开映射 JSON 选择器，并将其路径加入当前任务配置。
-    func chooseMapping_confuse() {
-        let panel_confuse = NSOpenPanel()
-        panel_confuse.canChooseDirectories = false
-        panel_confuse.canChooseFiles = true
-        panel_confuse.allowsMultipleSelection = false
-        panel_confuse.allowedContentTypes = [.json]
-        panel_confuse.prompt = "选择"
-        if panel_confuse.runModal() == .OK, let url_confuse = panel_confuse.url {
-            mappingPath_confuse = url_confuse.path
-        }
-    }
-
     /// 根据所选工程重新检测类别、项目名称和可用后缀。
     func detectConfiguration_confuse() {
         guard !projectPath_confuse.isEmpty else { return }
@@ -73,7 +59,6 @@ final class ConfuseViewModel_confuse: ObservableObject {
         )
         detectedSuffixes_confuse = configuration_confuse.suffixes_confuse
         suffix_confuse = configuration_confuse.suffixes_confuse.first ?? ""
-        mappingPath_confuse = findMapping_confuse(projectURL_confuse: projectURL_confuse)
         status_confuse = "已识别项目"
         detail_confuse = "\(detectedType_confuse.displayName_confuse) 项目：\(configuration_confuse.name_confuse)"
     }
@@ -98,7 +83,7 @@ final class ConfuseViewModel_confuse: ObservableObject {
             suffixes_confuse: suffixes_confuse,
             operation_confuse: operation_confuse.rawValue,
             namingRule_confuse: namingRule_confuse.rawValue,
-            mappingPath_confuse: mappingPath_confuse.isEmpty ? nil : mappingPath_confuse
+            mappingDirectory_confuse: EngineService_confuse.mappingDirectoryURL_confuse().path
         )
         isRunning_confuse = true
         status_confuse = operation_confuse.displayName_confuse
@@ -121,9 +106,6 @@ final class ConfuseViewModel_confuse: ObservableObject {
                 self_confuse.lastResult_confuse = engineResult_confuse
                 self_confuse.status_confuse = "已完成"
                 self_confuse.detail_confuse = engineResult_confuse.message_confuse ?? "操作已完成。"
-                if let mappingPath_confuse = engineResult_confuse.mappingPath_confuse {
-                    self_confuse.mappingPath_confuse = mappingPath_confuse
-                }
             case .success(let engineResult_confuse):
                 self_confuse.status_confuse = "失败"
                 self_confuse.detail_confuse = engineResult_confuse.error_confuse ?? "操作失败。"
@@ -147,20 +129,6 @@ final class ConfuseViewModel_confuse: ObservableObject {
         return values_confuse.map { $0.hasPrefix("_") ? $0 : "_\($0)" }
     }
 
-    /// 在项目根目录的 JSON 文件夹中查找当前工程默认的映射文件。
-    /// - Parameter projectURL_confuse: 工程根目录。
-    /// - Returns: 找到的映射路径，找不到时返回空字符串。
-    private func findMapping_confuse(projectURL_confuse: URL) -> String {
-        let preferredName_confuse = mappingFileName_confuse()
-        let preferredURL_confuse = projectURL_confuse
-            .appendingPathComponent("JSON", isDirectory: true)
-            .appendingPathComponent(preferredName_confuse)
-        if FileManager.default.fileExists(atPath: preferredURL_confuse.path) {
-            return preferredURL_confuse.path
-        }
-        return ""
-    }
-
     /// 根据项目后缀和项目类型生成映射 JSON 文件名。
     /// - Returns: 形如 `项目后缀_swift.json` 的文件名。
     private func mappingFileName_confuse() -> String {
@@ -179,8 +147,9 @@ final class ConfuseViewModel_confuse: ObservableObject {
     /// 返回当前项目映射文件的预期路径，供界面展示自动查找位置。
     /// - Returns: JSON 文件夹中的预期路径文本。
     var mappingDisplayPath_confuse: String {
-        let path_confuse = projectPath_confuse.isEmpty ? "JSON" : URL(fileURLWithPath: projectPath_confuse).appendingPathComponent("JSON").path
-        return "\(path_confuse)/\(mappingFileName_confuse())"
+        return EngineService_confuse.mappingDirectoryURL_confuse()
+            .appendingPathComponent(mappingFileName_confuse())
+            .path
     }
 
     /// 弹出映射文件缺失提示，告诉用户自动查找过的目录。
@@ -188,7 +157,7 @@ final class ConfuseViewModel_confuse: ObservableObject {
         let alert_confuse = NSAlert()
         alert_confuse.alertStyle = .warning
         alert_confuse.messageText = "未找到映射 JSON"
-        alert_confuse.informativeText = "项目目录和 JSON 文件夹中都没有找到 \(mappingFileName_confuse())。请先完成混淆，或选择已有的映射 JSON 文件。"
+        alert_confuse.informativeText = "应用同级的 JSON 文件夹中没有找到 \(mappingFileName_confuse())。请先使用相同项目后缀完成混淆。"
         alert_confuse.addButton(withTitle: "确定")
         alert_confuse.runModal()
     }

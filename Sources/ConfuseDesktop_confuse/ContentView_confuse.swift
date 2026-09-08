@@ -237,14 +237,12 @@ struct ContentView_confuse: View {
                 HStack(spacing: 9) {
                     Image(systemName: "doc.text.fill")
                         .foregroundStyle(Color.confuseAccent_confuse)
-                    Text(viewModel_confuse.mappingPath_confuse.isEmpty ? "自动查找：\(viewModel_confuse.mappingDisplayPath_confuse)" : viewModel_confuse.mappingPath_confuse)
+                    Text(viewModel_confuse.mappingDisplayPath_confuse)
                         .font(.system(size: 11, design: .monospaced))
                         .lineLimit(1)
                         .truncationMode(.middle)
-                        .foregroundStyle(.white.opacity(viewModel_confuse.mappingPath_confuse.isEmpty ? 0.36 : 0.72))
+                        .foregroundStyle(.white.opacity(0.72))
                     Spacer()
-                    Button("选择") { viewModel_confuse.chooseMapping_confuse() }
-                        .buttonStyle(.bordered)
                 }
                 .padding(10)
                 .background(Color.black.opacity(0.16))

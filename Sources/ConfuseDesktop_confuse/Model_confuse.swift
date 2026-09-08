@@ -80,7 +80,7 @@ struct EngineRequest_confuse: Codable, Sendable {
     let suffixes_confuse: [String]
     let operation_confuse: String
     let namingRule_confuse: String
-    let mappingPath_confuse: String?
+    let mappingDirectory_confuse: String
 }
 
 /// 描述 Python 混淆引擎执行后的统计信息和错误信息。
