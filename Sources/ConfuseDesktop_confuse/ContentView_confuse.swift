@@ -4,6 +4,7 @@ import UniformTypeIdentifiers
 /// 构建混淆机主窗口，负责展示配置、拖拽区域、执行控制和结果摘要。
 struct ContentView_confuse: View {
     @StateObject private var viewModel_confuse = ConfuseViewModel_confuse()
+    @StateObject private var monitoringViewModel_confuse = MonitoringViewModel_confuse()
     @State private var isDropTargeted_confuse = false
 
     /// 返回混淆机主界面。
@@ -11,7 +12,22 @@ struct ContentView_confuse: View {
         HStack(spacing: 0) {
             sidebar_confuse
             Divider().overlay(Color.confuseBorder_confuse)
-            mainContent_confuse
+            ZStack {
+                mainContent_confuse
+                    .id(viewModel_confuse.contentSelectionID_confuse)
+                    .transition(
+                        .asymmetric(
+                            insertion: .opacity.combined(with: .move(edge: .trailing)),
+                            removal: .opacity.combined(with: .move(edge: .leading))
+                        )
+                    )
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .clipped()
+            .animation(
+                .easeInOut(duration: 0.24),
+                value: viewModel_confuse.contentSelectionID_confuse
+            )
         }
         .frame(minWidth: 920, minHeight: 660)
         .background(Color.confuseBackground_confuse)
@@ -21,18 +37,11 @@ struct ContentView_confuse: View {
     /// 返回左侧品牌、一级菜单和条件展开的二级菜单区域。
     private var sidebar_confuse: some View {
         VStack(alignment: .leading, spacing: 0) {
-            VStack(alignment: .leading, spacing: 10) {
-                Image(systemName: "wand.and.stars")
-                    .font(.system(size: 26, weight: .semibold))
-                    .foregroundStyle(Color.confuseAccent_confuse)
-                Text("App Tools")
-                    .font(.system(size: 22, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
-            }
-            .padding(.top, 34)
-            .padding(.horizontal, 26)
+            SidebarBrandView_confuse()
+                .padding(.top, 28)
+                .padding(.horizontal, 20)
 
-            Spacer().frame(height: 38)
+            Spacer().frame(height: 30)
             Text("功能菜单")
                 .font(.system(size: 10, weight: .bold))
                 .tracking(1.4)
@@ -42,17 +51,25 @@ struct ContentView_confuse: View {
             VStack(spacing: 4) {
                 ForEach(PrimaryMenu_confuse.allCases) { menu_confuse in
                     Button {
-                        viewModel_confuse.primaryMenu_confuse = menu_confuse
+                        withAnimation(.easeInOut(duration: 0.22)) {
+                            viewModel_confuse.selectPrimaryMenu_confuse(menu_confuse: menu_confuse)
+                        }
                     } label: {
                         HStack(spacing: 12) {
                             Image(systemName: menu_confuse.iconName_confuse)
                                 .frame(width: 18)
                             Text(menu_confuse.displayName_confuse)
                             Spacer()
-                            if hasSubmenu_confuse(menu_confuse) {
+                            if menu_confuse.hasSubmenu_confuse {
                                 Image(systemName: "chevron.down")
                                     .font(.system(size: 9, weight: .bold))
-                                    .rotationEffect(.degrees(viewModel_confuse.primaryMenu_confuse == menu_confuse ? 0 : -90))
+                                    .rotationEffect(
+                                        .degrees(
+                                            viewModel_confuse.isPrimaryMenuExpanded_confuse(menu_confuse: menu_confuse)
+                                                ? 0
+                                                : -90
+                                        )
+                                    )
                             }
                         }
                         .font(.system(size: 13, weight: .medium))
@@ -64,15 +81,24 @@ struct ContentView_confuse: View {
                     }
                     .buttonStyle(.plain)
 
-                    if viewModel_confuse.primaryMenu_confuse == menu_confuse {
+                    if viewModel_confuse.isPrimaryMenuExpanded_confuse(menu_confuse: menu_confuse) {
                         submenu_confuse(for: menu_confuse)
+                            .transition(.opacity.combined(with: .move(edge: .top)))
                     }
                 }
             }
             .padding(.top, 14)
             .padding(.horizontal, 14)
+            .animation(
+                .easeInOut(duration: 0.22),
+                value: viewModel_confuse.expandedPrimaryMenu_confuse
+            )
 
-            Spacer()
+            Spacer(minLength: 18)
+
+            SidebarFooterArtwork_confuse()
+                .padding(.horizontal, 18)
+                .padding(.bottom, 18)
         }
         .frame(width: 218)
         .background(Color.black.opacity(0.16))
@@ -97,10 +123,9 @@ struct ContentView_confuse: View {
                 iconName_confuse: "arrow.up.doc"
             )
         case .monitoring_confuse:
-            placeholderContent_confuse(
-                title_confuse: viewModel_confuse.monitoringMenu_confuse.displayName_confuse,
-                subtitle_confuse: "监控审核菜单已创建，当前暂不执行功能。",
-                iconName_confuse: "checkmark.seal"
+            MonitoringContentView_confuse(
+                viewModel_confuse: monitoringViewModel_confuse,
+                menu_confuse: viewModel_confuse.monitoringMenu_confuse
             )
         case .settings_confuse:
             placeholderContent_confuse(
@@ -172,18 +197,6 @@ struct ContentView_confuse: View {
         .padding(.vertical, 30)
     }
 
-    /// 判断一级菜单是否拥有二级菜单。
-    /// - Parameter menu_confuse: 待判断的一级菜单。
-    /// - Returns: 拥有二级菜单时返回 true。
-    private func hasSubmenu_confuse(_ menu_confuse: PrimaryMenu_confuse) -> Bool {
-        switch menu_confuse {
-        case .obfuscation_confuse, .submission_confuse, .monitoring_confuse:
-            return true
-        case .initialize_confuse, .settings_confuse:
-            return false
-        }
-    }
-
     /// 返回当前一级菜单对应的二级菜单列表。
     /// - Parameter menu_confuse: 当前一级菜单。
     /// - Returns: 二级菜单导航视图。
@@ -197,7 +210,9 @@ struct ContentView_confuse: View {
                     iconName_confuse: icon_confuse(for: mode_confuse),
                     isSelected_confuse: viewModel_confuse.operation_confuse == mode_confuse
                 ) {
-                    viewModel_confuse.operation_confuse = mode_confuse
+                    withAnimation(.easeInOut(duration: 0.20)) {
+                        viewModel_confuse.selectOperationMode_confuse(mode_confuse: mode_confuse)
+                    }
                 }
             }
         case .submission_confuse:
@@ -207,7 +222,9 @@ struct ContentView_confuse: View {
                     iconName_confuse: submissionIcon_confuse(for: menuItem_confuse),
                     isSelected_confuse: viewModel_confuse.submissionMenu_confuse == menuItem_confuse
                 ) {
-                    viewModel_confuse.submissionMenu_confuse = menuItem_confuse
+                    withAnimation(.easeInOut(duration: 0.20)) {
+                        viewModel_confuse.selectSubmissionMenu_confuse(menu_confuse: menuItem_confuse)
+                    }
                 }
             }
         case .monitoring_confuse:
@@ -217,7 +234,9 @@ struct ContentView_confuse: View {
                     iconName_confuse: monitoringIcon_confuse(for: menuItem_confuse),
                     isSelected_confuse: viewModel_confuse.monitoringMenu_confuse == menuItem_confuse
                 ) {
-                    viewModel_confuse.monitoringMenu_confuse = menuItem_confuse
+                    withAnimation(.easeInOut(duration: 0.20)) {
+                        viewModel_confuse.selectMonitoringMenu_confuse(menu_confuse: menuItem_confuse)
+                    }
                 }
             }
         case .initialize_confuse, .settings_confuse:
@@ -409,7 +428,7 @@ struct ContentView_confuse: View {
             }
 
             VStack(alignment: .leading, spacing: 8) {
-                Text("映射 JSON")
+                Text("映射文件")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.52))
                 HStack(spacing: 9) {

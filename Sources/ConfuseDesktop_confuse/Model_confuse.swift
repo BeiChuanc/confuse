@@ -68,6 +68,16 @@ enum PrimaryMenu_confuse: String, CaseIterable, Identifiable {
         case .settings_confuse: return "gearshape"
         }
     }
+
+    /// 返回当前一级菜单是否包含可展开的二级菜单。
+    var hasSubmenu_confuse: Bool {
+        switch self {
+        case .obfuscation_confuse, .submission_confuse, .monitoring_confuse:
+            return true
+        case .initialize_confuse, .settings_confuse:
+            return false
+        }
+    }
 }
 
 /// 描述提交自动化下的二级菜单，目前仅用于导航展示。
@@ -83,7 +93,7 @@ enum SubmissionAutomationMenu_confuse: String, CaseIterable, Identifiable {
     /// 返回提交自动化二级菜单的中文名称。
     var displayName_confuse: String {
         switch self {
-        case .codeMagic_confuse: return "提交 CodeMagic"
+        case .codeMagic_confuse: return "提交云端构建"
         case .agreement_confuse: return "协议处理"
         case .materials_confuse: return "整理资料"
         case .backend_confuse: return "填写后台"

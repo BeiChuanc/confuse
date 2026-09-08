@@ -6,6 +6,7 @@ import SwiftUI
 @MainActor
 final class ConfuseViewModel_confuse: ObservableObject {
     @Published var primaryMenu_confuse: PrimaryMenu_confuse = .obfuscation_confuse
+    @Published var expandedPrimaryMenu_confuse: PrimaryMenu_confuse? = .obfuscation_confuse
     @Published var submissionMenu_confuse: SubmissionAutomationMenu_confuse = .codeMagic_confuse
     @Published var monitoringMenu_confuse: MonitoringAuditMenu_confuse = .status_confuse
     @Published var projectType_confuse: ProjectType_confuse = .swift_confuse
@@ -19,6 +20,62 @@ final class ConfuseViewModel_confuse: ObservableObject {
     @Published var isRunning_confuse = false
     @Published var isDropTargeted_confuse = false
     @Published var lastResult_confuse: EngineResult_confuse?
+
+    /// 返回当前内容页的稳定标识，用于驱动页面切换动画。
+    var contentSelectionID_confuse: String {
+        switch primaryMenu_confuse {
+        case .obfuscation_confuse:
+            return "\(primaryMenu_confuse.rawValue)_\(operation_confuse.rawValue)"
+        case .submission_confuse:
+            return "\(primaryMenu_confuse.rawValue)_\(submissionMenu_confuse.rawValue)"
+        case .monitoring_confuse:
+            return "\(primaryMenu_confuse.rawValue)_\(monitoringMenu_confuse.rawValue)"
+        case .initialize_confuse, .settings_confuse:
+            return primaryMenu_confuse.rawValue
+        }
+    }
+
+    /// 选择一级菜单，并按单开模式切换其二级菜单展开状态。
+    /// - Parameter menu_confuse: 用户点击的一级菜单。
+    func selectPrimaryMenu_confuse(menu_confuse: PrimaryMenu_confuse) {
+        guard menu_confuse.hasSubmenu_confuse else {
+            primaryMenu_confuse = menu_confuse
+            expandedPrimaryMenu_confuse = nil
+            return
+        }
+
+        if primaryMenu_confuse == menu_confuse {
+            expandedPrimaryMenu_confuse = expandedPrimaryMenu_confuse == menu_confuse ? nil : menu_confuse
+        } else {
+            primaryMenu_confuse = menu_confuse
+            expandedPrimaryMenu_confuse = menu_confuse
+        }
+    }
+
+    /// 判断指定一级菜单当前是否展开。
+    /// - Parameter menu_confuse: 待检查的一级菜单。
+    /// - Returns: 菜单已展开时返回 true。
+    func isPrimaryMenuExpanded_confuse(menu_confuse: PrimaryMenu_confuse) -> Bool {
+        expandedPrimaryMenu_confuse == menu_confuse
+    }
+
+    /// 切换混淆程序的二级模式。
+    /// - Parameter mode_confuse: 用户选择的混淆模式。
+    func selectOperationMode_confuse(mode_confuse: OperationMode_confuse) {
+        operation_confuse = mode_confuse
+    }
+
+    /// 切换提交自动化的二级菜单。
+    /// - Parameter menu_confuse: 用户选择的提交自动化菜单。
+    func selectSubmissionMenu_confuse(menu_confuse: SubmissionAutomationMenu_confuse) {
+        submissionMenu_confuse = menu_confuse
+    }
+
+    /// 切换监控审核的二级菜单。
+    /// - Parameter menu_confuse: 用户选择的监控审核菜单。
+    func selectMonitoringMenu_confuse(menu_confuse: MonitoringAuditMenu_confuse) {
+        monitoringMenu_confuse = menu_confuse
+    }
 
     /// 打开工程目录选择器并刷新项目配置。
     func chooseProject_confuse() {
@@ -159,8 +216,8 @@ final class ConfuseViewModel_confuse: ObservableObject {
     func showMappingMissingAlert_confuse() {
         let alert_confuse = NSAlert()
         alert_confuse.alertStyle = .warning
-        alert_confuse.messageText = "未找到映射 JSON"
-        alert_confuse.informativeText = "应用同级的 JSON 文件夹中没有找到 \(mappingFileName_confuse())。请先使用相同项目后缀完成混淆。"
+        alert_confuse.messageText = "未找到映射文件"
+        alert_confuse.informativeText = "应用同级的映射目录中没有找到 \(mappingFileName_confuse())。请先使用相同项目后缀完成混淆。"
         alert_confuse.addButton(withTitle: "确定")
         alert_confuse.runModal()
     }

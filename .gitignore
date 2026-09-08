@@ -4,3 +4,4 @@ dist/
 *.app/
 .DS_Store
 .confuse_request_confuse.json
+AppMonitorData/
