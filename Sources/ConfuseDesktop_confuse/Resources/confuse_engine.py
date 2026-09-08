@@ -159,10 +159,28 @@ def new_name_confuse(project_name_confuse_value: str, used_confuse: set, naming_
             return candidate_confuse
 
 
-def suffixes_confuse(request_confuse: dict) -> list[str]:
-    """读取并清洗界面传入的后缀列表。"""
+def suffixes_confuse(request_confuse: dict, project_type_confuse: str) -> list[str]:
+    """读取后缀并为 Swift 补齐大小写变体，兼容 Xcode 常见文件命名方式。"""
     values_confuse = request_confuse.get("suffixes_confuse") or []
-    return [str(value_confuse) if str(value_confuse).startswith("_") else f"_{value_confuse}" for value_confuse in values_confuse]
+    normalized_confuse = [
+        str(value_confuse) if str(value_confuse).startswith("_") else f"_{value_confuse}"
+        for value_confuse in values_confuse
+    ]
+    if project_type_confuse != "swift":
+        return normalized_confuse
+
+    variants_confuse = []
+    for suffix_confuse in normalized_confuse:
+        stem_confuse = suffix_confuse.lstrip("_")
+        variant_values_confuse = [
+            suffix_confuse,
+            f"_{stem_confuse.lower()}",
+            f"_{stem_confuse[:1].upper()}{stem_confuse[1:].lower()}" if stem_confuse else suffix_confuse,
+        ]
+        for variant_confuse in variant_values_confuse:
+            if variant_confuse not in variants_confuse:
+                variants_confuse.append(variant_confuse)
+    return variants_confuse
 
 
 def token_pattern_confuse(project_type_confuse: str):
@@ -362,7 +380,7 @@ def run_engine_confuse(request_confuse: dict) -> dict:
     mapping_path_confuse = detect_mapping_path_confuse(request_confuse, project_type_confuse)
     mapping_confuse = load_mapping_confuse(mapping_path_confuse)
     project_name_confuse_value = project_name_confuse(root_confuse, project_type_confuse)
-    suffixes_confuse_value = suffixes_confuse(request_confuse)
+    suffixes_confuse_value = suffixes_confuse(request_confuse, project_type_confuse)
     used_confuse = build_used_names_confuse(mapping_confuse)
 
     if operation_confuse == "deobfuscate":
