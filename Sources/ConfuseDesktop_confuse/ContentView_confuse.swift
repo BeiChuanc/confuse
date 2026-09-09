@@ -5,6 +5,8 @@ import UniformTypeIdentifiers
 struct ContentView_confuse: View {
     @StateObject private var viewModel_confuse = ConfuseViewModel_confuse()
     @StateObject private var initializationViewModel_confuse = ProjectInitializationViewModel_confuse()
+    @StateObject private var materialViewModel_confuse = MaterialAutomationViewModel_confuse()
+    @StateObject private var packageAssemblyViewModel_confuse = PackageAssemblyViewModel_confuse()
     @StateObject private var monitoringViewModel_confuse = MonitoringViewModel_confuse()
     @State private var isDropTargeted_confuse = false
 
@@ -114,11 +116,7 @@ struct ContentView_confuse: View {
         case .initialize_confuse:
             ProjectInitializationView_confuse(viewModel_confuse: initializationViewModel_confuse)
         case .submission_confuse:
-            placeholderContent_confuse(
-                title_confuse: viewModel_confuse.submissionMenu_confuse.displayName_confuse,
-                subtitle_confuse: "提交自动化菜单已创建，当前暂不执行功能。",
-                iconName_confuse: "arrow.up.doc"
-            )
+            submissionContent_confuse
         case .monitoring_confuse:
             MonitoringContentView_confuse(
                 viewModel_confuse: monitoringViewModel_confuse,
@@ -129,6 +127,23 @@ struct ContentView_confuse: View {
                 title_confuse: "设置",
                 subtitle_confuse: "应用设置功能即将接入。",
                 iconName_confuse: "gearshape"
+            )
+        }
+    }
+
+    /// 根据提交自动化二级菜单返回整理资料页面或待接入功能页面。
+    @ViewBuilder
+    private var submissionContent_confuse: some View {
+        switch viewModel_confuse.submissionMenu_confuse {
+        case .materials_confuse:
+            MaterialAutomationView_confuse(viewModel_confuse: materialViewModel_confuse)
+        case .package_confuse:
+            PackageAssemblyView_confuse(viewModel_confuse: packageAssemblyViewModel_confuse)
+        case .codeMagic_confuse, .backend_confuse:
+            placeholderContent_confuse(
+                title_confuse: viewModel_confuse.submissionMenu_confuse.displayName_confuse,
+                subtitle_confuse: "当前功能正在准备中。",
+                iconName_confuse: submissionIcon_confuse(for: viewModel_confuse.submissionMenu_confuse)
             )
         }
     }
@@ -279,8 +294,8 @@ struct ContentView_confuse: View {
     private func submissionIcon_confuse(for menu_confuse: SubmissionAutomationMenu_confuse) -> String {
         switch menu_confuse {
         case .codeMagic_confuse: return "paperplane"
-        case .agreement_confuse: return "doc.text"
         case .materials_confuse: return "folder"
+        case .package_confuse: return "shippingbox"
         case .backend_confuse: return "rectangle.and.pencil.and.ellipsis"
         }
     }

@@ -128,11 +128,11 @@ enum PrimaryMenu_confuse: String, CaseIterable, Identifiable {
     }
 }
 
-/// 描述提交自动化下的二级菜单，目前仅用于导航展示。
+/// 描述提交自动化下的二级菜单，用于导航已实现与待接入功能。
 enum SubmissionAutomationMenu_confuse: String, CaseIterable, Identifiable {
     case codeMagic_confuse = "code_magic"
-    case agreement_confuse = "agreement"
     case materials_confuse = "materials"
+    case package_confuse = "package"
     case backend_confuse = "backend"
 
     /// 返回用于 SwiftUI 列表稳定标识的菜单值。
@@ -142,11 +142,258 @@ enum SubmissionAutomationMenu_confuse: String, CaseIterable, Identifiable {
     var displayName_confuse: String {
         switch self {
         case .codeMagic_confuse: return "提交云端构建"
-        case .agreement_confuse: return "协议处理"
         case .materials_confuse: return "整理资料"
+        case .package_confuse: return "合包整理"
         case .backend_confuse: return "填写后台"
         }
     }
+}
+
+/// 描述合包整理支持的项目语言，并提供中文显示名称。
+enum PackageLanguage_confuse: String, CaseIterable, Identifiable, Sendable {
+    case swift_confuse = "Swift"
+    case flutter_confuse = "Flutter"
+
+    /// 返回用于 SwiftUI 列表稳定标识的语言值。
+    var id: String { rawValue }
+
+    /// 返回语言的中文显示名称。
+    var displayName_confuse: String { rawValue }
+}
+
+/// 描述合包整理支持的业务类型，并提供目录匹配名称。
+enum PackageType_confuse: String, CaseIterable, Identifiable, Sendable {
+    case video20_confuse = "Video 2.0"
+    case social20_confuse = "Social 2.0"
+    case social40_confuse = "Social 4.0"
+
+    /// 返回用于 SwiftUI 列表稳定标识的合包类型值。
+    var id: String { rawValue }
+
+    /// 返回合包类型的中文显示名称。
+    var displayName_confuse: String {
+        switch self {
+        case .video20_confuse: return "视频 2.0"
+        case .social20_confuse: return "社交 2.0"
+        case .social40_confuse: return "社交 4.0"
+        }
+    }
+}
+
+/// 描述 Swift 合包前对目标工程和合包代码的检查结果。
+struct SwiftPackageInspection_confuse: Sendable {
+    let targetRootPath_confuse: String
+    let appDelegatePath_confuse: String
+    let targetPodfilePath_confuse: String
+    let bundleID_confuse: String
+    let packageFiles_confuse: [String]
+    let missingPackageFiles_confuse: [String]
+    let hasFacebook_confuse: Bool
+
+    /// 返回目标工程是否具备执行 Swift 合包的基本条件。
+    var isReady_confuse: Bool {
+        !targetRootPath_confuse.isEmpty
+            && !appDelegatePath_confuse.isEmpty
+            && !targetPodfilePath_confuse.isEmpty
+            && !bundleID_confuse.isEmpty
+            && missingPackageFiles_confuse.isEmpty
+    }
+}
+
+/// 描述合包流程中的一个进度事件。
+struct PackageAssemblyProgress_confuse: Sendable {
+    let progress_confuse: Double
+    let detail_confuse: String
+}
+
+/// 保存后台登录凭据和目标项目 Bundle ID，仅用于单次后台配置读取任务。
+struct BackendConfigurationRequest_confuse: Codable, Sendable {
+    let account_confuse: String
+    let password_confuse: String
+    let twoFactorCode_confuse: String
+    let bundleID_confuse: String
+}
+
+/// 保存从苹果马甲包后台读取的合包配置，并作为工程写入的唯一数据来源。
+struct BackendConfiguration_confuse: Codable, Equatable, Sendable {
+    let bundleID_confuse: String
+    let appsFlyerDevKey_confuse: String
+    let appleAppID_confuse: String
+    let configurationDomain_confuse: String
+    let requestDomain_confuse: String
+    let facebookAppID_confuse: String
+    let facebookClientToken_confuse: String
+    let facebookDisplayName_confuse: String
+    let hasFacebook_confuse: Bool
+}
+
+/// 描述后台配置自动化脚本输出的进度、配置结果或错误事件。
+struct BackendConfigurationEvent_confuse: Codable, Sendable {
+    let event_confuse: String
+    let state_confuse: String?
+    let message_confuse: String?
+    let progress_confuse: Double?
+    let ok_confuse: Bool?
+    let configuration_confuse: BackendConfiguration_confuse?
+    let error_confuse: String?
+}
+
+/// 描述协议自动化支持的三种协议类型及其生成顺序。
+enum AgreementType_confuse: String, CaseIterable, Identifiable, Codable, Sendable {
+    case privacy_confuse = "privacy"
+    case terms_confuse = "terms"
+    case eula_confuse = "eula"
+
+    /// 返回 SwiftUI 使用的稳定标识。
+    var id: String { rawValue }
+
+    /// 返回协议类型的中文名称。
+    var displayName_confuse: String {
+        switch self {
+        case .privacy_confuse: return "隐私政策"
+        case .terms_confuse: return "使用条款"
+        case .eula_confuse: return "最终用户许可协议"
+        }
+    }
+
+    /// 返回协议用途的简短中文说明。
+    var description_confuse: String {
+        switch self {
+        case .privacy_confuse: return "说明用户数据、设备权限和隐私处理方式。"
+        case .terms_confuse: return "说明用户使用应用时需要遵守的服务条款。"
+        case .eula_confuse: return "说明移动应用许可范围和知识产权约定。"
+        }
+    }
+
+    /// 返回协议类型对应的 SF Symbols 图标名称。
+    var iconName_confuse: String {
+        switch self {
+        case .privacy_confuse: return "hand.raised.fill"
+        case .terms_confuse: return "doc.text.fill"
+        case .eula_confuse: return "signature"
+        }
+    }
+}
+
+/// 描述单项协议自动化当前所处的运行状态。
+enum AgreementGenerationState_confuse: Equatable, Sendable {
+    case pending_confuse
+    case running_confuse
+    case completed_confuse
+    case failed_confuse
+}
+
+/// 保存一次协议自动化需要提交给生成器的应用信息和协议范围。
+struct AgreementAutomationRequest_confuse: Codable, Sendable {
+    let appName_confuse: String
+    let email_confuse: String
+    let agreementTypes_confuse: [String]
+}
+
+/// 描述协议自动化脚本输出的进度、链接或最终结果事件。
+struct AgreementAutomationEvent_confuse: Codable, Sendable {
+    let event_confuse: String
+    let agreementType_confuse: String?
+    let state_confuse: String?
+    let message_confuse: String?
+    let progress_confuse: Double?
+    let link_confuse: String?
+    let ok_confuse: Bool?
+    let links_confuse: [String: String]?
+    let error_confuse: String?
+}
+
+/// 描述整理资料页面需要从飞书记录中读取的字段，并提供统一标题和图标。
+enum MaterialField_confuse: String, CaseIterable, Identifiable, Sendable {
+    case uiNumber_confuse
+    case developerAccount_confuse
+    case softwareName_confuse
+    case bundleID_confuse
+    case appID_confuse
+    case storeReviewCredential_confuse
+    case phoneNumber_confuse
+    case bankCard_confuse
+    case routingABA_confuse
+
+    /// 返回 SwiftUI 列表使用的稳定标识。
+    var id: String { rawValue }
+
+    /// 返回资料字段的中文名称。
+    var displayName_confuse: String {
+        switch self {
+        case .uiNumber_confuse: return "UI 编号"
+        case .developerAccount_confuse: return "开发者账号"
+        case .softwareName_confuse: return "软件名"
+        case .bundleID_confuse: return "Bundle ID"
+        case .appID_confuse: return "App ID"
+        case .storeReviewCredential_confuse: return "商店审核账号密码"
+        case .phoneNumber_confuse: return "手机号"
+        case .bankCard_confuse: return "银行卡"
+        case .routingABA_confuse: return "路由 ABA"
+        }
+    }
+
+    /// 返回资料字段对应的 SF Symbols 图标名称。
+    var iconName_confuse: String {
+        switch self {
+        case .uiNumber_confuse: return "number.square"
+        case .developerAccount_confuse: return "person.crop.circle"
+        case .softwareName_confuse: return "app"
+        case .bundleID_confuse: return "shippingbox"
+        case .appID_confuse: return "number"
+        case .storeReviewCredential_confuse: return "key"
+        case .phoneNumber_confuse: return "phone"
+        case .bankCard_confuse: return "creditcard"
+        case .routingABA_confuse: return "building.columns"
+        }
+    }
+
+}
+
+/// 保存从飞书项目记录中读取的 UI 编号和八项提交资料，数据仅在当前应用进程内使用。
+struct MaterialRecord_confuse: Codable, Equatable, Sendable {
+    let uiNumber_confuse: String
+    let developerAccount_confuse: String
+    let softwareName_confuse: String
+    let bundleID_confuse: String
+    let appID_confuse: String
+    let storeReviewCredential_confuse: String
+    let phoneNumber_confuse: String
+    let bankCard_confuse: String
+    let routingABA_confuse: String
+
+    /// 返回指定资料字段的当前值。
+    /// - Parameter field_confuse: 需要读取的字段类型。
+    /// - Returns: 飞书记录中的字段值；未填写时返回空字符串。
+    func value_confuse(field_confuse: MaterialField_confuse) -> String {
+        switch field_confuse {
+        case .uiNumber_confuse: return uiNumber_confuse
+        case .developerAccount_confuse: return developerAccount_confuse
+        case .softwareName_confuse: return softwareName_confuse
+        case .bundleID_confuse: return bundleID_confuse
+        case .appID_confuse: return appID_confuse
+        case .storeReviewCredential_confuse: return storeReviewCredential_confuse
+        case .phoneNumber_confuse: return phoneNumber_confuse
+        case .bankCard_confuse: return bankCard_confuse
+        case .routingABA_confuse: return routingABA_confuse
+        }
+    }
+}
+
+/// 保存一次飞书资料整理请求中的 UI 编号。
+struct MaterialAutomationRequest_confuse: Codable, Sendable {
+    let uiNumber_confuse: String
+}
+
+/// 描述飞书资料自动化脚本输出的进度、记录或错误事件。
+struct MaterialAutomationEvent_confuse: Codable, Sendable {
+    let event_confuse: String
+    let state_confuse: String?
+    let message_confuse: String?
+    let progress_confuse: Double?
+    let ok_confuse: Bool?
+    let record_confuse: MaterialRecord_confuse?
+    let error_confuse: String?
 }
 
 /// 描述监控审核下的二级菜单，目前仅用于导航展示。

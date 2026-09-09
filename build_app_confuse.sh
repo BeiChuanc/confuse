@@ -10,6 +10,8 @@ executable_path_confuse="${bin_path_confuse}/ConfuseDesktop_confuse"
 resource_bundle_path_confuse="$(find "$bin_path_confuse" -maxdepth 1 -type d -name '*.bundle' -print -quit)"
 application_path_confuse="$project_path_confuse/dist/Confuse.app"
 mapping_directory_confuse="$project_path_confuse/dist/JSON"
+profile_directory_confuse="$project_path_confuse/dist/PROFILE"
+package_directory_confuse="$project_path_confuse/dist/PACKAGE"
 monitoring_directory_confuse="$project_path_confuse/dist/AppMonitorData"
 
 if [[ ! -x "$executable_path_confuse" ]]; then
@@ -24,7 +26,16 @@ fi
 rm -rf "$application_path_confuse"
 mkdir -p "$application_path_confuse/Contents/MacOS" "$application_path_confuse/Contents/Resources"
 mkdir -p "$mapping_directory_confuse"
+mkdir -p "$profile_directory_confuse"
+mkdir -p \
+    "$package_directory_confuse/Swift/Video 2.0" \
+    "$package_directory_confuse/Swift/Social 2.0" \
+    "$package_directory_confuse/Swift/Social 4.0" \
+    "$package_directory_confuse/Flutter/Video 2.0" \
+    "$package_directory_confuse/Flutter/Social 2.0" \
+    "$package_directory_confuse/Flutter/Social 4.0"
 mkdir -p "$monitoring_directory_confuse/keys" "$monitoring_directory_confuse/logs" "$monitoring_directory_confuse/backups"
+chmod 700 "$profile_directory_confuse"
 chmod 700 "$monitoring_directory_confuse" "$monitoring_directory_confuse/keys" "$monitoring_directory_confuse/logs" "$monitoring_directory_confuse/backups"
 cp "$executable_path_confuse" "$application_path_confuse/Contents/MacOS/ConfuseDesktop_confuse"
 cp -R "$resource_bundle_path_confuse" "$application_path_confuse/Contents/Resources/"
@@ -38,4 +49,6 @@ codesign --force --deep --sign - "$application_path_confuse"
 
 echo "已生成应用：$application_path_confuse"
 echo "已准备映射目录：$mapping_directory_confuse"
+echo "已准备 Profile 目录：$profile_directory_confuse"
+echo "已准备合包代码目录：$package_directory_confuse"
 echo "已准备监控目录：$monitoring_directory_confuse"
