@@ -6,6 +6,8 @@ const BACKEND_LOGIN_URL_CONFUSE = "https://admin.joyhappier.com/login";
 const BACKEND_PACKAGE_URL_CONFUSE = "https://admin.joyhappier.com/app_package";
 const BACKEND_PAGE_TIMEOUT_SECONDS_CONFUSE = 90;
 const BACKEND_DIALOG_SETTLE_DELAY_MILLISECONDS_CONFUSE = 1200;
+const CODEMAGIC_TEAM_URL_CONFUSE = "https://codemagic.io/teams/6789fddb55751081aa461152";
+const CODEMAGIC_PAGE_TIMEOUT_SECONDS_CONFUSE = 180;
 const AGREEMENT_GENERATOR_URLS_CONFUSE = {
     privacy: "https://app.freeprivacypolicy.com/wizard/privacy-policy",
     terms: "https://app.freeprivacypolicy.com/wizard/terms-conditions",
@@ -75,7 +77,8 @@ async function handleNativeMessage_confuse(message_confuse) {
     if (![
         "read_material_confuse",
         "generate_agreements_confuse",
-        "read_backend_configuration_confuse"
+        "read_backend_configuration_confuse",
+        "configure_codemagic_confuse"
     ].includes(command_confuse)) return;
     const taskID_confuse = String(message_confuse.task_id_confuse || "");
     if (!taskID_confuse) return;
@@ -89,8 +92,10 @@ async function handleNativeMessage_confuse(message_confuse) {
             await runMaterialTask_confuse(message_confuse);
         } else if (command_confuse === "generate_agreements_confuse") {
             await runAgreementTask_confuse(message_confuse);
-        } else {
+        } else if (command_confuse === "read_backend_configuration_confuse") {
             await runBackendConfigurationTask_confuse(message_confuse);
+        } else {
+            await runCodeMagicTask_confuse(message_confuse);
         }
     } catch (error_confuse) {
         sendFailure_confuse(taskID_confuse, error_confuse.message || "Chrome 浏览器自动化失败。");
@@ -1232,6 +1237,676 @@ async function generateAgreement_confuse(
     );
     if (!link_confuse) throw new Error("协议生成器没有返回有效链接。");
     return link_confuse;
+}
+
+/**
+ * 在当前 Chrome 中依次配置 Codemagic API Key、证书和 Provisioning Profile。
+ * 参数：task_confuse 包含项目名、Bundle ID、Profile 字段、API 文件路径和步骤数组。
+ * 返回值：Promise<void>，进度和结果通过原生消息回传。
+ * 异常：页面未登录、控件变化、文件上传或任一步保存失败时抛出错误。
+ */
+async function runCodeMagicTask_confuse(task_confuse) {
+    const taskID_confuse = String(task_confuse.task_id_confuse || "");
+    const projectName_confuse = String(task_confuse.projectName_confuse || "").trim();
+    const bundleID_confuse = String(task_confuse.bundleID_confuse || "").trim();
+    const issuerID_confuse = String(task_confuse.issuerID_confuse || "").trim();
+    const keyID_confuse = String(task_confuse.keyID_confuse || "").trim();
+    const apiKeyPath_confuse = String(task_confuse.apiKeyPath_confuse || "").trim();
+    const steps_confuse = Array.isArray(task_confuse.steps_confuse)
+        ? task_confuse.steps_confuse.filter((step_confuse) =>
+            ["api_key", "certificate", "profile"].includes(step_confuse)
+        )
+        : [];
+    if (!taskID_confuse || !projectName_confuse || !issuerID_confuse || !keyID_confuse || !steps_confuse.length) {
+        throw new Error("Codemagic 请求缺少项目或 Profile 信息。");
+    }
+    if (steps_confuse.includes("api_key") && !apiKeyPath_confuse) {
+        throw new Error("创建集成前，请先选择 .p8 API 密钥。");
+    }
+
+    sendProgress_confuse(taskID_confuse, "正在当前 Chrome 中查找 Codemagic 团队页面。", 0.10);
+    const target_confuse = await acquireCodeMagicTab_confuse();
+    try {
+        await openCodeMagicSettings_confuse(target_confuse.debuggee_confuse);
+        const keyName_confuse = `${projectName_confuse}_codeMagic`;
+        const certificateName_confuse = `${projectName_confuse.toLowerCase()}_dis`;
+        const profileName_confuse = `${projectName_confuse}_store`;
+        for (let index_confuse = 0; index_confuse < steps_confuse.length; index_confuse += 1) {
+            const step_confuse = steps_confuse[index_confuse];
+            const startProgress_confuse = 0.16 + (index_confuse / steps_confuse.length) * 0.76;
+            sendCodeMagicStage_confuse(
+                taskID_confuse,
+                step_confuse,
+                "running",
+                codeMagicStepMessage_confuse(step_confuse),
+                startProgress_confuse
+            );
+            let created_confuse = true;
+            if (step_confuse === "api_key") {
+                created_confuse = await configureCodeMagicAPIKey_confuse(
+                    target_confuse.debuggee_confuse,
+                    keyName_confuse,
+                    issuerID_confuse,
+                    keyID_confuse,
+                    apiKeyPath_confuse
+                );
+            } else if (step_confuse === "certificate") {
+                created_confuse = await configureCodeMagicCertificate_confuse(
+                    target_confuse.debuggee_confuse,
+                    keyName_confuse,
+                    certificateName_confuse
+                );
+            } else {
+                created_confuse = await configureCodeMagicProfile_confuse(
+                    target_confuse.debuggee_confuse,
+                    keyName_confuse,
+                    profileName_confuse,
+                    bundleID_confuse,
+                    projectName_confuse
+                );
+            }
+            const finishProgress_confuse = 0.16 + ((index_confuse + 1) / steps_confuse.length) * 0.76;
+            sendCodeMagicStage_confuse(
+                taskID_confuse,
+                step_confuse,
+                created_confuse ? "completed" : "skipped",
+                created_confuse ? "当前步骤已完成。" : "对应资源已存在，已跳过创建。",
+                finishProgress_confuse
+            );
+        }
+        postNativeMessage_confuse({
+            task_id_confuse: taskID_confuse,
+            event_confuse: "result",
+            state_confuse: "completed",
+            message_confuse: "所选 Codemagic 步骤已全部完成。",
+            progress_confuse: 1,
+            ok_confuse: true
+        });
+    } finally {
+        await closeCodeMagicDialogs_confuse(target_confuse.debuggee_confuse);
+        await detachDebugger_confuse(target_confuse.debuggee_confuse);
+    }
+}
+
+/**
+ * 返回 Codemagic 步骤开始时的英文页面说明。
+ * 参数：step_confuse 为步骤原始值。
+ * 返回值：对应的执行说明字符串。
+ */
+function codeMagicStepMessage_confuse(step_confuse) {
+    if (step_confuse === "api_key") return "正在创建 API 密钥。";
+    if (step_confuse === "certificate") return "正在生成分发证书。";
+    return "正在获取描述文件。";
+}
+
+/**
+ * 向桌面应用回传 Codemagic 单步状态和总进度。
+ * 参数：任务编号、步骤、状态、说明和进度。
+ * 返回值：无。
+ */
+function sendCodeMagicStage_confuse(
+    taskID_confuse,
+    step_confuse,
+    state_confuse,
+    message_confuse,
+    progress_confuse
+) {
+    postNativeMessage_confuse({
+        task_id_confuse: taskID_confuse,
+        event_confuse: "progress",
+        step_confuse: step_confuse,
+        state_confuse: state_confuse,
+        message_confuse: message_confuse,
+        progress_confuse: progress_confuse
+    });
+}
+
+/**
+ * 复用当前 Chrome 中指定团队的 Codemagic 标签页，未找到时在当前窗口新建标签页。
+ * 参数：无。
+ * 返回值：标签页和调试目标。
+ * 异常：标签页无法创建或调试器无法附加时抛出错误。
+ */
+async function acquireCodeMagicTab_confuse() {
+    const tabs_confuse = await queryTabs_confuse({
+        url: "https://codemagic.io/teams/6789fddb55751081aa461152*"
+    });
+    for (const tab_confuse of tabs_confuse) {
+        try {
+            const debuggee_confuse = { tabId: tab_confuse.id };
+            await attachDebugger_confuse(debuggee_confuse);
+            await sendCommand_confuse(debuggee_confuse, "Page.enable");
+            await sendCommand_confuse(debuggee_confuse, "Runtime.enable");
+            await sendCommand_confuse(debuggee_confuse, "DOM.enable");
+            await activateTab_confuse(tab_confuse);
+            return { tab_confuse: tab_confuse, debuggee_confuse: debuggee_confuse };
+        } catch (_error_confuse) {
+            continue;
+        }
+    }
+
+    const activeTabs_confuse = await queryTabs_confuse({ active: true, lastFocusedWindow: true });
+    const properties_confuse = { url: CODEMAGIC_TEAM_URL_CONFUSE, active: true };
+    if (activeTabs_confuse[0] && typeof activeTabs_confuse[0].windowId === "number") {
+        properties_confuse.windowId = activeTabs_confuse[0].windowId;
+    }
+    const tab_confuse = await createTab_confuse(properties_confuse);
+    await waitForTabLoad_confuse(tab_confuse.id, 60, "Codemagic 页面加载超时。");
+    const debuggee_confuse = { tabId: tab_confuse.id };
+    try {
+        await attachDebugger_confuse(debuggee_confuse);
+        await sendCommand_confuse(debuggee_confuse, "Page.enable");
+        await sendCommand_confuse(debuggee_confuse, "Runtime.enable");
+        await sendCommand_confuse(debuggee_confuse, "DOM.enable");
+    } catch (_error_confuse) {
+        throw new Error("无法控制 Codemagic 标签页，请关闭其他调试会话后重试。");
+    }
+    await activateTab_confuse(tab_confuse);
+    return { tab_confuse: tab_confuse, debuggee_confuse: debuggee_confuse };
+}
+
+/**
+ * 导航到指定团队设置并等待用户已有登录会话加载完成。
+ * 参数：debuggee_confuse 为 Codemagic 标签页调试目标。
+ * 返回值：Promise<void>。
+ * 异常：三分钟内未显示设置页时抛出错误。
+ */
+async function openCodeMagicSettings_confuse(debuggee_confuse) {
+    const isTarget_confuse = await evaluate_confuse(
+        debuggee_confuse,
+        `location.href.startsWith(${JSON.stringify(CODEMAGIC_TEAM_URL_CONFUSE)})`
+    );
+    if (!isTarget_confuse) {
+        await sendCommand_confuse(debuggee_confuse, "Page.navigate", { url: CODEMAGIC_TEAM_URL_CONFUSE });
+    }
+    await waitForExpression_confuse(
+        debuggee_confuse,
+        "document.readyState === 'complete' && document.body.innerText.includes('Settings') && document.body.innerText.includes('Team integrations')",
+        CODEMAGIC_PAGE_TIMEOUT_SECONDS_CONFUSE,
+        "Codemagic 设置页面未就绪，请在当前 Chrome 标签页完成登录后重试。"
+    );
+}
+
+/**
+ * 展开 Codemagic 设置分组并等待分组内标记出现。
+ * 参数：调试目标、分组标题和展开后应出现的文字。
+ * 返回值：Promise<void>。
+ * 异常：标题或展开内容不存在时抛出错误。
+ */
+async function expandCodeMagicSection_confuse(debuggee_confuse, title_confuse, marker_confuse) {
+    const markerJSON_confuse = JSON.stringify(marker_confuse);
+    const alreadyExpanded_confuse = await evaluate_confuse(
+        debuggee_confuse,
+        `Array.from(document.querySelectorAll('*')).some((item_confuse) => item_confuse.offsetParent !== null && String(item_confuse.textContent || '').trim() === ${markerJSON_confuse})`
+    );
+    if (alreadyExpanded_confuse) return;
+    const titleJSON_confuse = JSON.stringify(title_confuse);
+    const clicked_confuse = await evaluate_confuse(debuggee_confuse, `(() => {
+        const visible_confuse = (item_confuse) => !!item_confuse
+            && !!(item_confuse.offsetWidth || item_confuse.offsetHeight || item_confuse.getClientRects().length);
+        const title_confuse = Array.from(document.querySelectorAll('*')).find((item_confuse) =>
+            visible_confuse(item_confuse)
+                && item_confuse.children.length === 0
+                && String(item_confuse.textContent || '').trim() === ${titleJSON_confuse}
+        );
+        const trigger_confuse = title_confuse?.closest('button, [role="button"]')
+            || title_confuse?.parentElement;
+        if (!trigger_confuse) return false;
+        trigger_confuse.scrollIntoView({ block: 'center' });
+        trigger_confuse.click();
+        return true;
+    })()`);
+    if (!clicked_confuse) throw new Error(`无法展开网页分组：${title_confuse}。`);
+    await waitForExpression_confuse(
+        debuggee_confuse,
+        `Array.from(document.querySelectorAll('*')).some((item_confuse) => item_confuse.offsetParent !== null && String(item_confuse.textContent || '').trim() === ${markerJSON_confuse})`,
+        30,
+        `网页分组未能展开：${title_confuse}。`
+    );
+}
+
+/**
+ * 点击当前可见且文字精确匹配的按钮或标签控件。
+ * 参数：调试目标、按钮文字和可选作用域标记。
+ * 返回值：Promise<void>。
+ * 异常：控件不存在或不可用时抛出错误。
+ */
+async function clickCodeMagicText_confuse(debuggee_confuse, text_confuse, scopeMarker_confuse = "") {
+    const textJSON_confuse = JSON.stringify(text_confuse);
+    const scopeJSON_confuse = JSON.stringify(scopeMarker_confuse);
+    const clicked_confuse = await evaluate_confuse(debuggee_confuse, `(() => {
+        const visible_confuse = (item_confuse) => !!item_confuse
+            && !!(item_confuse.offsetWidth || item_confuse.offsetHeight || item_confuse.getClientRects().length);
+        const scopes_confuse = Array.from(document.querySelectorAll('[role="dialog"], [class*="modal"], section, main, body'))
+            .filter(visible_confuse);
+        const scope_confuse = ${scopeJSON_confuse}
+            ? scopes_confuse
+                .filter((item_confuse) => String(item_confuse.innerText || '').includes(${scopeJSON_confuse}))
+                .sort((left_confuse, right_confuse) =>
+                    String(left_confuse.innerText || '').length - String(right_confuse.innerText || '').length
+                )[0]
+            : document;
+        const candidates_confuse = Array.from((scope_confuse || document).querySelectorAll('button, a, [role="button"], [role="tab"]'))
+            .filter((item_confuse) => visible_confuse(item_confuse)
+                && String(item_confuse.textContent || '').trim() === ${textJSON_confuse}
+                && !item_confuse.disabled);
+        const target_confuse = candidates_confuse[0];
+        if (!target_confuse) return false;
+        target_confuse.scrollIntoView({ block: 'center', inline: 'center' });
+        target_confuse.click();
+        return true;
+    })()`);
+    if (!clicked_confuse) throw new Error(`未找到可用的网页控件：${text_confuse}。`);
+}
+
+/**
+ * 按字段标签定位 Codemagic 输入框并写入值。
+ * 参数：调试目标、字段标签和值。
+ * 返回值：Promise<void>。
+ * 异常：字段不存在或受控输入框拒绝写入时抛出错误。
+ */
+async function fillCodeMagicField_confuse(debuggee_confuse, label_confuse, value_confuse) {
+    const labelJSON_confuse = JSON.stringify(label_confuse);
+    const valueJSON_confuse = JSON.stringify(value_confuse);
+    const filled_confuse = await evaluate_confuse(debuggee_confuse, `(() => {
+        const visible_confuse = (item_confuse) => !!item_confuse
+            && !!(item_confuse.offsetWidth || item_confuse.offsetHeight || item_confuse.getClientRects().length);
+        const label_confuse = Array.from(document.querySelectorAll('label, div, span, p')).find((item_confuse) =>
+            visible_confuse(item_confuse)
+                && item_confuse.children.length === 0
+                && String(item_confuse.textContent || '').trim() === ${labelJSON_confuse}
+        );
+        let container_confuse = label_confuse;
+        let input_confuse = null;
+        for (let level_confuse = 0; container_confuse && level_confuse < 5; level_confuse += 1) {
+            input_confuse = Array.from(container_confuse.querySelectorAll('input'))
+                .find((item_confuse) => visible_confuse(item_confuse) && item_confuse.type !== 'file');
+            if (input_confuse) break;
+            container_confuse = container_confuse.parentElement;
+        }
+        if (!input_confuse) return false;
+        const descriptor_confuse = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+        descriptor_confuse.set.call(input_confuse, ${valueJSON_confuse});
+        input_confuse.dispatchEvent(new Event('input', { bubbles: true }));
+        input_confuse.dispatchEvent(new Event('change', { bubbles: true }));
+        input_confuse.blur();
+        return input_confuse.value === ${valueJSON_confuse};
+    })()`);
+    if (!filled_confuse) throw new Error(`无法填写网页字段：${label_confuse}。`);
+}
+
+/**
+ * 按字段标签打开下拉框并选择精确匹配的选项。
+ * 参数：调试目标、字段标签和选项文字。
+ * 返回值：Promise<void>。
+ * 异常：下拉框或目标选项不存在时抛出错误。
+ */
+async function selectCodeMagicOption_confuse(debuggee_confuse, label_confuse, option_confuse) {
+    const labelJSON_confuse = JSON.stringify(label_confuse);
+    const optionJSON_confuse = JSON.stringify(option_confuse);
+    const state_confuse = await evaluate_confuse(debuggee_confuse, `(() => {
+        const visible_confuse = (item_confuse) => !!item_confuse
+            && !!(item_confuse.offsetWidth || item_confuse.offsetHeight || item_confuse.getClientRects().length);
+        const label_confuse = Array.from(document.querySelectorAll('label, div, span, p')).find((item_confuse) =>
+            visible_confuse(item_confuse)
+                && item_confuse.children.length === 0
+                && String(item_confuse.textContent || '').trim() === ${labelJSON_confuse}
+        );
+        let container_confuse = label_confuse;
+        let control_confuse = null;
+        for (let level_confuse = 0; container_confuse && level_confuse < 5; level_confuse += 1) {
+            control_confuse = Array.from(container_confuse.querySelectorAll('select, [role="combobox"], input'))
+                .find((item_confuse) => visible_confuse(item_confuse) && item_confuse.type !== 'file');
+            if (control_confuse) break;
+            container_confuse = container_confuse.parentElement;
+        }
+        if (!control_confuse) return 'missing';
+        if (control_confuse.tagName === 'SELECT') {
+            const option_confuse = Array.from(control_confuse.options).find((item_confuse) =>
+                String(item_confuse.textContent || '').trim() === ${optionJSON_confuse}
+            );
+            if (!option_confuse) return 'missing-option';
+            control_confuse.value = option_confuse.value;
+            control_confuse.dispatchEvent(new Event('input', { bubbles: true }));
+            control_confuse.dispatchEvent(new Event('change', { bubbles: true }));
+            return 'selected';
+        }
+        control_confuse.click();
+        return 'opened';
+    })()`);
+    if (state_confuse === "selected") return;
+    if (state_confuse !== "opened") throw new Error(`无法打开网页下拉框：${label_confuse}。`);
+    await waitForExpression_confuse(
+        debuggee_confuse,
+        `Array.from(document.querySelectorAll('[role="option"], li, button, div')).some((item_confuse) => item_confuse.offsetParent !== null && item_confuse.children.length === 0 && String(item_confuse.textContent || '').trim() === ${optionJSON_confuse})`,
+        20,
+        `网页中没有显示选项：${option_confuse}。`
+    );
+    const selected_confuse = await evaluate_confuse(debuggee_confuse, `(() => {
+        const option_confuse = Array.from(document.querySelectorAll('[role="option"], li, button, div')).find((item_confuse) =>
+            item_confuse.offsetParent !== null
+                && item_confuse.children.length === 0
+                && String(item_confuse.textContent || '').trim() === ${optionJSON_confuse}
+        );
+        if (!option_confuse) return false;
+        option_confuse.click();
+        return true;
+    })()`);
+    if (!selected_confuse) throw new Error(`无法选择网页选项：${option_confuse}。`);
+}
+
+/**
+ * 通过 DevTools DOM 接口向当前可见文件输入框写入本地文件。
+ * 参数：调试目标和 API 文件绝对路径。
+ * 返回值：Promise<void>。
+ * 异常：文件输入框不存在或 Chrome 拒绝文件设置时抛出错误。
+ */
+async function uploadCodeMagicFile_confuse(debuggee_confuse, filePath_confuse) {
+    const response_confuse = await sendCommand_confuse(debuggee_confuse, "Runtime.evaluate", {
+        expression: `(() => {
+            const modal_confuse = Array.from(document.querySelectorAll('[role="dialog"], [class*="modal"]')).find(
+                (item_confuse) => item_confuse.offsetParent !== null
+                    && item_confuse.innerText.includes('API key')
+            );
+            return modal_confuse?.querySelector('input[type="file"]') || null;
+        })()`,
+        returnByValue: false
+    });
+    const objectID_confuse = response_confuse.result?.objectId;
+    if (!objectID_confuse) throw new Error("未找到 API 密钥文件输入区域。");
+    await sendCommand_confuse(debuggee_confuse, "DOM.setFileInputFiles", {
+        files: [filePath_confuse],
+        objectId: objectID_confuse
+    });
+    await waitForExpression_confuse(
+        debuggee_confuse,
+        "Array.from(document.querySelectorAll('input[type=\"file\"]')).some((item_confuse) => item_confuse.files && item_confuse.files.length === 1)",
+        15,
+        "Codemagic 未接受选择的 .p8 文件。"
+    );
+}
+
+/**
+ * 创建 Developer Portal API Key；同名 Key 已存在时直接跳过。
+ * 参数：调试目标、引用名、Issuer ID、Key ID 和 `.p8` 路径。
+ * 返回值：新建时返回 true，已存在时返回 false。
+ * 异常：集成面板、表单、上传或保存失败时抛出错误。
+ */
+async function configureCodeMagicAPIKey_confuse(
+    debuggee_confuse,
+    keyName_confuse,
+    issuerID_confuse,
+    keyID_confuse,
+    apiKeyPath_confuse
+) {
+    await closeCodeMagicDialogs_confuse(debuggee_confuse);
+    await expandCodeMagicSection_confuse(debuggee_confuse, "Team integrations", "Developer Portal");
+    const opened_confuse = await evaluate_confuse(debuggee_confuse, `(() => {
+        const visible_confuse = (item_confuse) => !!item_confuse
+            && !!(item_confuse.offsetWidth || item_confuse.offsetHeight || item_confuse.getClientRects().length);
+        const developer_confuse = Array.from(document.querySelectorAll('*')).find((item_confuse) =>
+            visible_confuse(item_confuse) && String(item_confuse.textContent || '').trim() === 'Developer Portal'
+        );
+        let container_confuse = developer_confuse;
+        for (let level_confuse = 0; container_confuse && level_confuse < 6; level_confuse += 1) {
+            const button_confuse = Array.from(container_confuse.querySelectorAll('button, [role="button"]')).find(
+                (item_confuse) => visible_confuse(item_confuse)
+                    && String(item_confuse.textContent || '').trim() === 'Manage keys'
+            );
+            if (button_confuse) {
+                button_confuse.scrollIntoView({ block: 'center' });
+                button_confuse.click();
+                return true;
+            }
+            container_confuse = container_confuse.parentElement;
+        }
+        return false;
+    })()`);
+    if (!opened_confuse) throw new Error("无法打开开发者门户密钥列表。");
+    await waitForExpression_confuse(
+        debuggee_confuse,
+        "Array.from(document.querySelectorAll('[role=\"dialog\"], [class*=\"modal\"]')).some((item_confuse) => item_confuse.offsetParent !== null && item_confuse.innerText.includes('Add another key'))",
+        40,
+        "开发者门户密钥列表未能打开。"
+    );
+    const nameJSON_confuse = JSON.stringify(keyName_confuse);
+    const exists_confuse = await evaluate_confuse(debuggee_confuse, `Array.from(document.querySelectorAll('[role="dialog"], [class*="modal"]')).some((item_confuse) => item_confuse.offsetParent !== null && String(item_confuse.innerText || '').split('\\n').some((line_confuse) => line_confuse.trim() === ${nameJSON_confuse}))`);
+    if (exists_confuse) {
+        await closeCodeMagicDialogs_confuse(debuggee_confuse);
+        return false;
+    }
+    await evaluate_confuse(debuggee_confuse, `(() => {
+        const modal_confuse = Array.from(document.querySelectorAll('[role="dialog"], [class*="modal"]')).find(
+            (item_confuse) => item_confuse.offsetParent !== null && item_confuse.innerText.includes('Add another key')
+        );
+        if (!modal_confuse) return false;
+        modal_confuse.scrollTop = modal_confuse.scrollHeight;
+        const scrolling_confuse = Array.from(modal_confuse.querySelectorAll('*')).filter(
+            (item_confuse) => item_confuse.scrollHeight > item_confuse.clientHeight + 8
+        );
+        scrolling_confuse.forEach((item_confuse) => { item_confuse.scrollTop = item_confuse.scrollHeight; });
+        return true;
+    })()`);
+    await clickCodeMagicText_confuse(debuggee_confuse, "Add another key", "Add another key");
+    await waitForExpression_confuse(
+        debuggee_confuse,
+        "document.body.innerText.includes('App Store Connect API key name') && document.body.innerText.includes('Issuer ID')",
+        30,
+        "Apple 开发者门户集成表单未能打开。"
+    );
+    await fillCodeMagicField_confuse(debuggee_confuse, "App Store Connect API key name", keyName_confuse);
+    await fillCodeMagicField_confuse(debuggee_confuse, "Issuer ID", issuerID_confuse);
+    await fillCodeMagicField_confuse(debuggee_confuse, "Key ID", keyID_confuse);
+    await uploadCodeMagicFile_confuse(debuggee_confuse, apiKeyPath_confuse);
+    await waitForExpression_confuse(
+        debuggee_confuse,
+        "Array.from(document.querySelectorAll('button')).some((item_confuse) => item_confuse.offsetParent !== null && item_confuse.textContent.trim() === 'Save' && !item_confuse.disabled)",
+        20,
+        "API 密钥表单内容不完整。"
+    );
+    await clickCodeMagicText_confuse(debuggee_confuse, "Save");
+    await waitForExpression_confuse(
+        debuggee_confuse,
+        `String(document.body.innerText || '').split('\\n').some((line_confuse) => line_confuse.trim() === ${nameJSON_confuse})`,
+        120,
+        "Codemagic 未确认 API 密钥创建结果。"
+    );
+    await closeCodeMagicDialogs_confuse(debuggee_confuse);
+    return true;
+}
+
+/**
+ * 创建 Apple Distribution 证书；同名证书已存在时直接跳过。
+ * 参数：调试目标、API Key 名和证书引用名。
+ * 返回值：新建时返回 true，已存在时返回 false。
+ * 异常：签名分组、证书表单或保存失败时抛出错误。
+ */
+async function configureCodeMagicCertificate_confuse(
+    debuggee_confuse,
+    keyName_confuse,
+    certificateName_confuse
+) {
+    await closeCodeMagicDialogs_confuse(debuggee_confuse);
+    await expandCodeMagicSection_confuse(debuggee_confuse, "Code signing identities", "iOS certificates");
+    await clickCodeMagicText_confuse(debuggee_confuse, "iOS certificates");
+    await waitForExpression_confuse(
+        debuggee_confuse,
+        "document.body.innerText.includes('Generate certificate')",
+        30,
+        "iOS 证书面板加载超时。"
+    );
+    const nameJSON_confuse = JSON.stringify(certificateName_confuse);
+    const exists_confuse = await evaluate_confuse(
+        debuggee_confuse,
+        `String(document.body.innerText || '').split('\\n').some((line_confuse) => line_confuse.trim() === ${nameJSON_confuse})`
+    );
+    if (exists_confuse) return false;
+    await clickCodeMagicText_confuse(debuggee_confuse, "Generate certificate");
+    await waitForExpression_confuse(
+        debuggee_confuse,
+        "document.body.innerText.includes('New code signing certificate') && document.body.innerText.includes('Reference name')",
+        30,
+        "证书创建表单未能打开。"
+    );
+    await fillCodeMagicField_confuse(debuggee_confuse, "Reference name", certificateName_confuse);
+    await selectCodeMagicOption_confuse(debuggee_confuse, "Certificate type", "Apple Distribution");
+    await selectCodeMagicOption_confuse(debuggee_confuse, "App Store Connect API key", keyName_confuse);
+    await clickCodeMagicText_confuse(debuggee_confuse, "Create certificate");
+    await waitForExpression_confuse(
+        debuggee_confuse,
+        `String(document.body.innerText || '').split('\\n').some((line_confuse) => line_confuse.trim() === ${nameJSON_confuse})`,
+        180,
+        "Codemagic 未确认分发证书创建结果。"
+    );
+    await closeCodeMagicDialogs_confuse(debuggee_confuse);
+    return true;
+}
+
+/**
+ * 从 App Store Connect 获取目标 App Store Profile 并保存引用名。
+ * 参数：调试目标、API Key 名、Profile 引用名、Bundle ID 和项目名。
+ * 返回值：新建时返回 true，已存在时返回 false。
+ * 异常：Profile 不匹配、弹窗未加载或下载失败时抛出错误。
+ */
+async function configureCodeMagicProfile_confuse(
+    debuggee_confuse,
+    keyName_confuse,
+    profileName_confuse,
+    bundleID_confuse,
+    projectName_confuse
+) {
+    await closeCodeMagicDialogs_confuse(debuggee_confuse);
+    await expandCodeMagicSection_confuse(debuggee_confuse, "Code signing identities", "iOS provisioning profiles");
+    await clickCodeMagicText_confuse(debuggee_confuse, "iOS provisioning profiles");
+    await waitForExpression_confuse(
+        debuggee_confuse,
+        "document.body.innerText.includes('Fetch profiles')",
+        30,
+        "iOS 描述文件面板加载超时。"
+    );
+    const profileNameJSON_confuse = JSON.stringify(profileName_confuse);
+    const exists_confuse = await evaluate_confuse(
+        debuggee_confuse,
+        `String(document.body.innerText || '').split('\\n').some((line_confuse) => line_confuse.trim() === ${profileNameJSON_confuse})`
+    );
+    if (exists_confuse) return false;
+    await clickCodeMagicText_confuse(debuggee_confuse, "Fetch profiles");
+    await waitForExpression_confuse(
+        debuggee_confuse,
+        "document.body.innerText.includes('Select API Key') && document.body.innerText.includes('Fetch profiles')",
+        30,
+        "API 密钥选择弹窗未能打开。"
+    );
+    await selectCodeMagicOption_confuse(debuggee_confuse, "App Store Connect API key", keyName_confuse);
+    await waitForExpression_confuse(
+        debuggee_confuse,
+        "Array.from(document.querySelectorAll('button')).some((item_confuse) => item_confuse.offsetParent !== null && item_confuse.textContent.trim() === 'Fetch profiles' && !item_confuse.disabled)",
+        20,
+        "Codemagic 未接受所选 API 密钥。"
+    );
+    await clickCodeMagicText_confuse(debuggee_confuse, "Fetch profiles", "Select API Key");
+    await waitForExpression_confuse(
+        debuggee_confuse,
+        "Array.from(document.querySelectorAll('[role=\"dialog\"], [class*=\"modal\"]')).some((item_confuse) => item_confuse.offsetParent !== null && item_confuse.innerText.includes('Fetch provisioning profiles') && item_confuse.innerText.includes('App Store profiles'))",
+        180,
+        "Codemagic 没有返回可用的描述文件。"
+    );
+    const matchJSON_confuse = JSON.stringify(bundleID_confuse || projectName_confuse);
+    const selected_confuse = await evaluate_confuse(debuggee_confuse, `(() => {
+        const visible_confuse = (item_confuse) => !!item_confuse
+            && !!(item_confuse.offsetWidth || item_confuse.offsetHeight || item_confuse.getClientRects().length);
+        const modal_confuse = Array.from(document.querySelectorAll('[role="dialog"], [class*="modal"]')).find(
+            (item_confuse) => visible_confuse(item_confuse)
+                && item_confuse.innerText.includes('Fetch provisioning profiles')
+        );
+        if (!modal_confuse) return false;
+        const marker_confuse = Array.from(modal_confuse.querySelectorAll('*')).find((item_confuse) =>
+            visible_confuse(item_confuse)
+                && item_confuse.children.length === 0
+                && String(item_confuse.textContent || '').includes(${matchJSON_confuse})
+        );
+        let container_confuse = marker_confuse;
+        let checkbox_confuse = null;
+        for (let level_confuse = 0; container_confuse && level_confuse < 7; level_confuse += 1) {
+            checkbox_confuse = container_confuse.querySelector('input[type="checkbox"], [role="checkbox"]');
+            if (checkbox_confuse) break;
+            container_confuse = container_confuse.parentElement;
+        }
+        if (!checkbox_confuse) return false;
+        if (!(checkbox_confuse.checked || checkbox_confuse.getAttribute('aria-checked') === 'true')) {
+            checkbox_confuse.click();
+        }
+        return true;
+    })()`);
+    if (!selected_confuse) {
+        throw new Error(`没有找到与 ${bundleID_confuse || projectName_confuse} 匹配的 App Store 描述文件。`);
+    }
+    const referenceFilled_confuse = await evaluate_confuse(debuggee_confuse, `(() => {
+        const modal_confuse = Array.from(document.querySelectorAll('[role="dialog"], [class*="modal"]')).find(
+            (item_confuse) => item_confuse.offsetParent !== null
+                && item_confuse.innerText.includes('Fetch provisioning profiles')
+        );
+        const input_confuse = Array.from(modal_confuse?.querySelectorAll('input') || []).find((item_confuse) =>
+            item_confuse.offsetParent !== null
+                && (item_confuse.type === 'text' || !item_confuse.type)
+                && String(item_confuse.placeholder || '').toLowerCase().includes('reference name')
+        ) || Array.from(modal_confuse?.querySelectorAll('input[type="text"]') || []).find(
+            (item_confuse) => item_confuse.offsetParent !== null
+        );
+        if (!input_confuse) return false;
+        const descriptor_confuse = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+        descriptor_confuse.set.call(input_confuse, ${profileNameJSON_confuse});
+        input_confuse.dispatchEvent(new Event('input', { bubbles: true }));
+        input_confuse.dispatchEvent(new Event('change', { bubbles: true }));
+        input_confuse.blur();
+        return input_confuse.value === ${profileNameJSON_confuse};
+    })()`);
+    if (!referenceFilled_confuse) throw new Error("无法填写描述文件引用名称。");
+    await waitForExpression_confuse(
+        debuggee_confuse,
+        "Array.from(document.querySelectorAll('button')).some((item_confuse) => item_confuse.offsetParent !== null && item_confuse.textContent.trim() === 'Download selected' && !item_confuse.disabled)",
+        20,
+        "所选描述文件缺少引用名称。"
+    );
+    await clickCodeMagicText_confuse(debuggee_confuse, "Download selected");
+    await waitForExpression_confuse(
+        debuggee_confuse,
+        `String(document.body.innerText || '').split('\\n').some((line_confuse) => line_confuse.trim() === ${profileNameJSON_confuse})`,
+        180,
+        "Codemagic 未确认描述文件下载结果。"
+    );
+    await closeCodeMagicDialogs_confuse(debuggee_confuse);
+    return true;
+}
+
+/**
+ * 通过 Escape 关闭所有可见 Codemagic 弹窗，页面没有弹窗时直接返回。
+ * 参数：debuggee_confuse 为 Codemagic 调试目标。
+ * 返回值：Promise<void>。
+ */
+async function closeCodeMagicDialogs_confuse(debuggee_confuse) {
+    for (let attempt_confuse = 0; attempt_confuse < 3; attempt_confuse += 1) {
+        const hasDialog_confuse = await evaluate_confuse(
+            debuggee_confuse,
+            "Array.from(document.querySelectorAll('[role=\"dialog\"], [class*=\"modal\"]')).some((item_confuse) => item_confuse.offsetParent !== null)"
+        );
+        if (!hasDialog_confuse) return;
+        await sendCommand_confuse(debuggee_confuse, "Input.dispatchKeyEvent", {
+            type: "rawKeyDown",
+            key: "Escape",
+            code: "Escape",
+            windowsVirtualKeyCode: 27,
+            nativeVirtualKeyCode: 53
+        });
+        await sendCommand_confuse(debuggee_confuse, "Input.dispatchKeyEvent", {
+            type: "keyUp",
+            key: "Escape",
+            code: "Escape",
+            windowsVirtualKeyCode: 27,
+            nativeVirtualKeyCode: 53
+        });
+        await delay_confuse(500);
+    }
 }
 
 /** 发送任务进度，不包含任何飞书字段值。 */

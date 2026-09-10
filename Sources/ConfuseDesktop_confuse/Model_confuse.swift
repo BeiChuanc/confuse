@@ -141,7 +141,7 @@ enum SubmissionAutomationMenu_confuse: String, CaseIterable, Identifiable {
     /// 返回提交自动化二级菜单的中文名称。
     var displayName_confuse: String {
         switch self {
-        case .codeMagic_confuse: return "提交云端构建"
+        case .codeMagic_confuse: return "云端构建"
         case .materials_confuse: return "整理资料"
         case .package_confuse: return "合包整理"
         case .backend_confuse: return "填写后台"
@@ -235,6 +235,65 @@ struct BackendConfigurationEvent_confuse: Codable, Sendable {
     let progress_confuse: Double?
     let ok_confuse: Bool?
     let configuration_confuse: BackendConfiguration_confuse?
+    let error_confuse: String?
+}
+
+/// 保存一次 Codemagic 云端构建自动化需要提交的项目、密钥和 API 文件信息。
+struct CodeMagicAutomationRequest_confuse: Codable, Sendable {
+    let projectPath_confuse: String
+    let projectName_confuse: String
+    let bundleID_confuse: String
+    let issuerID_confuse: String
+    let keyID_confuse: String
+    let apiKeyPath_confuse: String
+    let steps_confuse: [String]
+}
+
+/// 描述 Codemagic 云端构建自动化的三个可独立执行步骤。
+enum CodeMagicStep_confuse: String, CaseIterable, Identifiable, Codable, Sendable {
+    case apiKey_confuse = "api_key"
+    case certificate_confuse = "certificate"
+    case profile_confuse = "profile"
+
+    /// 返回 SwiftUI 列表使用的稳定标识。
+    var id: String { rawValue }
+
+    /// 返回步骤在云端构建页面中的中文名称。
+    var displayName_confuse: String {
+        switch self {
+        case .apiKey_confuse: return "创建 API 密钥"
+        case .certificate_confuse: return "生成证书"
+        case .profile_confuse: return "获取描述文件"
+        }
+    }
+
+    /// 返回步骤用途的英文说明。
+    var description_confuse: String {
+        switch self {
+        case .apiKey_confuse: return "将 App Store Connect API 密钥添加到开发者门户集成。"
+        case .certificate_confuse: return "生成 Apple Distribution 分发证书。"
+        case .profile_confuse: return "获取并保存与项目匹配的 App Store 描述文件。"
+        }
+    }
+
+    /// 返回步骤对应的 SF Symbols 图标名称。
+    var iconName_confuse: String {
+        switch self {
+        case .apiKey_confuse: return "key.fill"
+        case .certificate_confuse: return "checkmark.seal.fill"
+        case .profile_confuse: return "doc.badge.arrow.up.fill"
+        }
+    }
+}
+
+/// 描述 Codemagic 自动化脚本输出的进度、完成状态或错误事件。
+struct CodeMagicAutomationEvent_confuse: Codable, Sendable {
+    let event_confuse: String
+    let step_confuse: String?
+    let state_confuse: String?
+    let message_confuse: String?
+    let progress_confuse: Double?
+    let ok_confuse: Bool?
     let error_confuse: String?
 }
 
