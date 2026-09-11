@@ -4,6 +4,7 @@ import UniformTypeIdentifiers
 /// 构建混淆机主窗口，负责展示配置、拖拽区域、执行控制和结果摘要。
 struct ContentView_confuse: View {
     @StateObject private var viewModel_confuse = ConfuseViewModel_confuse()
+    @StateObject private var appSettingsViewModel_confuse = AppSettingsViewModel_confuse.shared_confuse
     @StateObject private var initializationViewModel_confuse = ProjectInitializationViewModel_confuse()
     @StateObject private var materialViewModel_confuse = MaterialAutomationViewModel_confuse()
     @StateObject private var codeMagicViewModel_confuse = CodeMagicAutomationViewModel_confuse()
@@ -36,6 +37,9 @@ struct ContentView_confuse: View {
         .frame(minWidth: 920, minHeight: 660)
         .background(Color.confuseBackground_confuse)
         .preferredColorScheme(.dark)
+        .animation(.easeInOut(duration: 0.24), value: appSettingsViewModel_confuse.primaryHex_confuse)
+        .animation(.easeInOut(duration: 0.24), value: appSettingsViewModel_confuse.secondaryHex_confuse)
+        .animation(.easeInOut(duration: 0.24), value: appSettingsViewModel_confuse.themeMode_confuse)
     }
 
     /// 返回左侧品牌、一级菜单和条件展开的二级菜单区域。
@@ -100,12 +104,15 @@ struct ContentView_confuse: View {
 
             Spacer(minLength: 18)
 
-            SidebarFooterArtwork_confuse()
-                .padding(.horizontal, 18)
-                .padding(.bottom, 18)
+            if appSettingsViewModel_confuse.sidebarPet_confuse == .orbitProbe_confuse {
+                OrbitProbePetView_confuse()
+                    .padding(.horizontal, 18)
+                    .padding(.bottom, 12)
+                    .transition(.opacity.combined(with: .move(edge: .bottom)))
+            }
         }
         .frame(width: 218)
-        .background(Color.black.opacity(0.16))
+        .background(Color.confuseSidebar_confuse)
     }
 
     /// 根据当前一级菜单返回右侧内容区域。
@@ -124,11 +131,7 @@ struct ContentView_confuse: View {
                 menu_confuse: viewModel_confuse.monitoringMenu_confuse
             )
         case .settings_confuse:
-            placeholderContent_confuse(
-                title_confuse: "设置",
-                subtitle_confuse: "应用设置功能即将接入。",
-                iconName_confuse: "gearshape"
-            )
+            AppSettingsView_confuse(viewModel_confuse: appSettingsViewModel_confuse)
         }
     }
 

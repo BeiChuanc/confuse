@@ -128,6 +128,51 @@ enum PrimaryMenu_confuse: String, CaseIterable, Identifiable {
     }
 }
 
+/// 描述主题强调色的组合方式，单色模式统一使用主色，混色模式同时使用主色与辅助色。
+enum ThemeColorMode_confuse: String, CaseIterable, Identifiable {
+    case solid_confuse = "solid"
+    case blended_confuse = "blended"
+
+    /// 返回用于 SwiftUI 列表稳定标识的主题模式值。
+    var id: String { rawValue }
+
+    /// 返回主题模式的中文名称。
+    var displayName_confuse: String {
+        switch self {
+        case .solid_confuse: return "单色"
+        case .blended_confuse: return "混色"
+        }
+    }
+}
+
+/// 描述侧边栏底部可展示的桌宠，保留关闭状态并接入用户选定的轨道探针。
+enum SidebarPet_confuse: String, CaseIterable, Identifiable {
+    case hidden_confuse = "hidden"
+    case orbitProbe_confuse = "orbit_probe"
+
+    /// 返回用于 SwiftUI 列表稳定标识的桌宠值。
+    var id: String { rawValue }
+
+    /// 返回桌宠的中文名称。
+    var displayName_confuse: String {
+        switch self {
+        case .hidden_confuse: return "不显示"
+        case .orbitProbe_confuse: return "轨道探针"
+        }
+    }
+}
+
+/// 保存一组可复用的主题预设颜色，供设置页面快速应用。
+struct ThemePreset_confuse: Identifiable, Hashable {
+    let id_confuse: String
+    let name_confuse: String
+    let primaryHex_confuse: String
+    let secondaryHex_confuse: String
+
+    /// 返回主题预设的稳定标识。
+    var id: String { id_confuse }
+}
+
 /// 描述提交自动化下的二级菜单，用于导航已实现与待接入功能。
 enum SubmissionAutomationMenu_confuse: String, CaseIterable, Identifiable {
     case codeMagic_confuse = "code_magic"
